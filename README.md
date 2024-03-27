@@ -55,7 +55,7 @@ Primárním řešeným problémem jsou druhá a třetí fáze návrhu – tedy 
 - formát výstupu
 	- strukturovaný textový formát (např. JSON)
 	- kvůli možnosti snadného posouzení výsledků by byl vhodný jednoduchý vizualizátor, co by výsledek vykreslil (třeba jako statické SVG)
-		- teoreticky lze použít vizualizátor [planner.jirihon.cz](http://planner.jirihon.cz/) (viz tlačítka vpravo nahoře – Plan a 2D/3D)
+		- teoreticky lze použít již existující vizualizační nástroj
 		- skříňky by mohly být barevně kódované podle účelu (respektive zóny)
 
 ### Technologie a praktické otázky
@@ -69,7 +69,7 @@ Primárním řešeným problémem jsou druhá a třetí fáze návrhu – tedy 
 	- nejtěžší bude definovat fitness funkci, která bude zvýhodňovat vizuální vzory (pokud jde o šířky skříněk)
 - licence řešiče není v experimentální fázi limitující
 - kód bude zveřejněn pod vhodnou licencí (pravděpodobně MIT)
-- role konzultanta se ujme Ing. Jiří Hon, Ph.D. ([jiri.hon@salusoft89.cz](mailto:jiri.hon@salusoft89.cz), [Salusoft89 s.r.o.](http://www.salusoft89.cz/), [ORCID](https://orcid.org/0000-0002-3321-9629)), je připraven tomu věnovat potřebný čas (má s tím zkušenost)
+- role konzultanta se ujme Ing. Jiří Hon, Ph.D. ([Salusoft89 s.r.o.](http://www.salusoft89.cz/), [ORCID](https://orcid.org/0000-0002-3321-9629))
 - Salusoft89 může zprostředkovat konzultace s designéry
 
 ### Stávající řešení a související články
