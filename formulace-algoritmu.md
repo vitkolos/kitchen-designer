@@ -1,0 +1,51 @@
+- zjednodušení
+	- přesná výška skříněk není předmětem výpočtu
+	- hloubka skříněk je důležitá kvůli rohům – je to jenom vstupní parametr
+- omezující podmínky
+	- vlastnosti prostoru
+		- rozměry místnosti
+		- zdi
+		- okna a dveře
+			- odstup vysokého nábytku od oken má být alespoň 150 mm
+			- od dveří aspoň 100 mm
+		- instalace – odtah (ventilace), voda, plyn, elektřina
+			- někdy dává smysl změnit instalace, pokud to přinese větší ergonomii
+		- překážky – topení, výklenky apod.
+		- požadovaný tvar kuchyně (u kterých stěn mají skříňky stát)
+	- preference zákazníka
+		- více úložného prostoru, nebo pracovní plochy?
+		- „aspoň jedna úložná skříňka musí být 80 cm široká“
+		- které typy spotřebičů je potřeba zahrnout/vyloučit (myčka, lednička apod.)
+	- předvolby designéra
+		- na daném místě (v jeho okolí) má/nemá být konkrétní skříňka/zóna/pásmo
+	- pracovní trojúhelník (skladování, mytí, vaření)
+		- obvod nejvýše 8 m
+		- délka strany mezi 1,2 a 2,7 m
+		- žádné překážky
+	- dřez a sporák
+		- ne v rohu, ne těsně u zdi
+		- neměly by se *do nich* otevírat dveře
+		- odkládací plocha vedle dřezu – šířka aspoň 250 mm, lépe 350 nebo 500 mm
+			- pokud vedle dřezu není pracovní plocha, tak alespoň 600 mm
+		- u sporáku bez vlastní odstavné plochy musí být plocha asopň 200 mm široká
+		- pracovní plocha z obou stran sporáku i dřezu by neměla být menší než 400 mm
+		- dřez a sporák by neměly být vedle sebe – ideální vzdálenost je 1200 mm
+		- mezi plynovým sporákem a bokem potravinové skříně by mělo být minimálně 300 mm
+		- sporák by neměl být blízko rohu pracovní desky
+	- pracovní plocha
+		- typicky mezi sporákem a dřezem
+		- šířka aspoň 950–1000 mm, v malých bytech pro 3 osoby lze i 650 mm
+		- optimální šířka 1200 mm
+	- myčka nádobí
+		- v blízkosti dřezu
+		- nesmí za ní být žádné vývody
+		- otevřená myčka nesmí bránit otevření dvířek
+	- pečicí trouba
+		- v těsné blízkosti odkládací plocha
+	- lednice
+		- musí být přístupná i těm, co právě nevaří
+		- musí být dostupná při ukládání nákupu
+		- nesmí být daleko od sporáku
+	- rohové skříňky
+		- pokud se přidá jenom jedna skříňka, není kuchyň tvaru L efektivní (přidaná skříňka zablokuje roh), lepší je nechat kuchyň ve tvaru I
+		- existuje více variant rohových skříněk
