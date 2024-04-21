@@ -1,6 +1,16 @@
 - zjednodušení
 	- přesná výška skříněk není předmětem výpočtu
 	- hloubka skříněk je důležitá kvůli rohům – je to jenom vstupní parametr
+- názvosloví
+	- zóny
+		- kuchyň se dělí na zóny podle účelu jednotlivých skříněk / částí kuchyně
+		- základní tři zóny jsou skladování, mytí a vaření
+		- dále je důležitá pracovní plocha – ta bývá obvykle mezi zónou mytí a vaření (ale kolem všech zón je potřeba mít nějakou odkládací plochu)
+	- výška skříněk
+		- existují tři základní typy skříněk podle výšky a upevnění – vysoká, nízká a zavěšená
+			- vysoké a nízké stojí na zemi, mají stejnou hloubku
+			- zavěšené mají cca poloviční hloubku a visí nad pracovní plochou, jejich horní stěna je zarovnána s vysokými skříňkami
+		- oblast s jedním typem skříněk pracovně označíme jako *pásmo*
 - omezující podmínky
 	- vlastnosti prostoru
 		- rozměry místnosti
@@ -49,3 +59,15 @@
 	- rohové skříňky
 		- pokud se přidá jenom jedna skříňka, není kuchyň tvaru L efektivní (přidaná skříňka zablokuje roh), lepší je nechat kuchyň ve tvaru I
 		- existuje více variant rohových skříněk
+- formát řešení
+	- pro jednoduchost se dají zanedbat hloubka a výška skříněk a do jisté míry i rozmístění částí kuchyně v prostoru
+	- budeme uvažovat jednotlivé části kuchyňské linky jako vzájemně související úsečky
+		- skříňky jsou pak obarvení jejich částí
+	- částem linky, kam lze umístit všechny tři typy skříněk (vysoké, nízké i zavěšené), budou odpovídat dvě úsečky – např. vysoké skříňky pak budou současně zabírat odpovídající část horní i dolní úsečky
+	- na vztazích jednotlivých úseček bude záležet pouze v několika optimalizačních scénářích
+		- návaznost dělení nízkých a zavěšených skříněk
+		- souvislost sporáku a digestoře
+		- vysoké skříňky se nesmí „roztrhnout“
+		- pracovní trojúhelník – tady záleží na konkrétním prostorovém uspořádání úseček
+		- rohová skříňka – u kuchyní tvaru L
+		- nezávislé otevírání více skříněk – typicky blízko rohu, např. v souvislosti s myčkou nádobí
