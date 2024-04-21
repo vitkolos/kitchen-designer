@@ -4,6 +4,7 @@
 
 - přesná výška skříněk není předmětem výpočtu
 - hloubka skříněk je důležitá kvůli rohům – je to jenom vstupní parametr
+
 ## Názvosloví
 
 - zóny
