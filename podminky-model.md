@@ -104,3 +104,30 @@
 	- lokální ostré pravidlo
 	- globální fitness pravidlo
 	- lokální fitness pravidlo
+
+## Vyjádření pomocí Pyomo
+
+- základní přístup
+	- každou úsečku rozdělíme na $n$ částí, kde $n$ bude vyplývat z délky konkrétní úsečky
+	- pro každou úsečku chceme získat seznam dvojic (část, nábytek), který popíše výsledné rozmístění jednotlivých kusů nábytku na úsečce, a seznam délek jednotlivých částí úsečky
+	- budeme mít jedno velké pole všech částí úseček
+- potřebné vyjadřovací prostředky
+	- jedna skříňka z databáze na několika místech najednou
+		- lze řešit více instancemi jedné skříňky v databázi
+	- rozměrové omezení pro šířku skříňky
+		- asi stačí minimum a maximum (ty se můžou i rovnat)
+		- v případě více možných šířek (např. 40, 60, 80) může pro každou šířku existovat nová instance v databázi
+	- okrajové skříňky – pokud linka není ode zdi ke zdi, na kraji může stát jen skříňka k tomu určená
+		- úsek bude označený jako krajní, bude vyžadovat umístění krajní skříňky (tzn. návrh, kde v úseku nebude žádná skříňka, nebude povolený)
+	- umístění středů jednotlivých zón v kuchyni – kvůli vzdálenosti od instalací i kvůli rozměrům pracovního trojúhelníku
+	- rozměry pracovní plochy či úložného prostoru
+	- „aspoň jedna úložná skříňka musí být aspoň 80 cm široká“
+	- požadavky na typy skříněk – např. kuchyň musí obsahovat dřez, sporák a ledničku
+	- vzdálenost skříňky od středu zóny – minimalizace pro udržení kompaktnosti zón
+	- nařízení/zákaz konkrétního typu skříňky v konkrétní oblasti
+	- vizuální atraktivita dělení – návaznost svislých čar a pravidelné vzory
+		- zatím se mi povedlo implementovat zvýhodnění stejně/podobně širokých skříněk vedle sebe (penalizuje se rozdíl šířky aktuální skříňky od té předchozí)
+	- odkládací plocha o nějaké minimální šířce v okolí určitých typů skříněk (sporák, dřez)
+	- šířka nejdelší souvislé pracovní desky
+	- návaznost sporáku a digestoře, dále také obou „částí“ vysokých skříněk
+	- rohová skříňka
