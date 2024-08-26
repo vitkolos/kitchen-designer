@@ -43,7 +43,7 @@ def load():
     # raises an exception if validation fails
     jsonschema.validate(instance=loaded_data, schema=schema)
 
-    items = [KitchenItem(item['name'], item['width_min'], item['width_max'])
+    items = [KitchenItem(item['name'], item['zone'], item['width_min'], item['width_max'])
              for item in loaded_data['available_items']]
     kitchen = Kitchen(loaded_data['kitchen_shape']['width'], items)
 
