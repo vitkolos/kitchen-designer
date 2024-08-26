@@ -49,7 +49,9 @@ def maxOneItemAtSegment(model, segment):
 # krajní segment
 def edgeSegments(model, segment, item, clause):
     match clause:
+        # segment je krajní & obsahuje položku => položka je krajní
         case 0: return edgeSegment[segment]*model.pairs[segment, item] <= edgeItem[item]
+        # segment je krajní => obsahuje alespoň jednu položku
         case 1: return edgeSegment[segment] <= sum(model.pairs[segment, item2] for item2 in database)
 
 # zakazuje určitý typ položek na určitém místě
@@ -64,11 +66,11 @@ def banItems(model, item, clause):
 
 
 # https://towardsdatascience.com/a-comprehensive-guide-to-modeling-techniques-in-mixed-integer-linear-programming-3e96cc1bc03d
-    
+
 def getPrevious(model, segment, clause):
     M = length*2
     segmentIsUsed = sum(model.pairs[segment, item] for item in database)
-    
+
     if segment == 0:
         if clause == 1:
             return model.previousDiff[segment] == 0

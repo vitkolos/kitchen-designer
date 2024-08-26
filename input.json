@@ -1,0 +1,62 @@
+{
+    "kitchen_shape": {
+        "width": 60
+    },
+    "available_items": [
+        {
+            "name": "sink1",
+            "type": "sink",
+            "zone": "cleaning",
+            "position_top": false,
+            "position_bottom": true,
+            "width_min": 10,
+            "width_max": 30,
+            "worktop": true,
+            "allow_edge": false
+        },
+        {
+            "name": "fridge1",
+            "type": "fridge",
+            "zone": "storage",
+            "position_top": true,
+            "position_bottom": true,
+            "width_min": 15,
+            "width_max": 30,
+            "worktop": false,
+            "allow_edge": true
+        },
+        {
+            "name": "dishwasher1",
+            "type": "dishwasher",
+            "zone": "cleaning",
+            "position_top": false,
+            "position_bottom": true,
+            "width_min": 15,
+            "width_max": 30,
+            "worktop": true,
+            "allow_edge": true
+        },
+        {
+            "name": "stove1",
+            "type": "stove",
+            "zone": "cooking",
+            "position_top": false,
+            "position_bottom": true,
+            "width_min": 10,
+            "width_max": 12,
+            "worktop": false,
+            "allow_edge": false
+        },
+        {
+            "name": "stove2",
+            "type": "stove",
+            "zone": "cooking",
+            "position_top": false,
+            "position_bottom": true,
+            "width_min": 15,
+            "width_max": 15,
+            "worktop": false,
+            "allow_edge": false
+        }
+    ]
+}

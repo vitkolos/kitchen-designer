@@ -1,2 +1,7 @@
+attrs==24.2.0
+jsonschema==4.23.0
+jsonschema-specifications==2023.12.1
 ply==3.11
 Pyomo==6.7.2
+referencing==0.35.1
+rpds-py==0.20.0
