@@ -64,9 +64,14 @@ def load() -> Kitchen:
 
     width: float = loaded_data['kitchen_shape']['width']
     segment_count = range(int(width)//10)
-    segments = [Segment(i, 0, None, i == 0, i == 0, False)
-                for i in segment_count]
-    parts = [KitchenPart(width, 10, segments)]
+    segments = []
+    segment: Segment | None = None
+
+    for i in segment_count:
+        segment = Segment(i, 0, None, i == 0, i == 0, False, segment)
+        segments.append(segment)
+
+    parts = [KitchenPart('part1', width, 10, segments)]
     kitchen = Kitchen(parts, segments, fixtures)
 
     return kitchen
