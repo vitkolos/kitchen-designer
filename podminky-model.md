@@ -131,3 +131,13 @@
 	- šířka nejdelší souvislé pracovní desky
 	- návaznost sporáku a digestoře, dále také obou „částí“ vysokých skříněk
 	- rohová skříňka
+- symetrie v řešení, jejich prevence (*symmetry breaking*)
+	- segmenty jsou rovnocenné, takže řešení (a, b, \_, c) a (a, b, c, \_) se rovnají
+		- lze zakázat volné segmenty „před“ obsazenými (to může vést ke komplikacím s krajními a rohovými segmenty)
+	- povolíme-li přítomnost několika instancí jednoho typu skříňky v řešení, lze tyto instance vzájemně permutovat, z toho vyplývají dva typy symetrií:
+		- jedna instance se v návrhu použije, druhá nikoliv
+			- to lze řešit podobně jako u prázdných segmentů
+			- budeme vyžadovat použití instancí v určitém pořadí
+		- jedna instance bude v návrhu vlevo, druhá vpravo
+			- zkusíme zvýhodnit řešení s „kanonickým“ pořadím pomocí fitness funkce
+			- přitom však nesmíme zvýhodnit řešení, která skříňky obsahují, oproti těm, která je neobsahují – jen znevýhodnit špatné pořadí

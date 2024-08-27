@@ -2,7 +2,7 @@
     "kitchen_shape": {
         "width": 60
     },
-    "available_items": [
+    "available_fixtures": [
         {
             "name": "sink1",
             "type": "sink",
@@ -11,7 +11,7 @@
             "position_bottom": true,
             "width_min": 10,
             "width_max": 30,
-            "worktop": true,
+            "has_worktop": true,
             "allow_edge": false
         },
         {
@@ -22,7 +22,7 @@
             "position_bottom": true,
             "width_min": 15,
             "width_max": 30,
-            "worktop": false,
+            "has_worktop": false,
             "allow_edge": true
         },
         {
@@ -33,7 +33,7 @@
             "position_bottom": true,
             "width_min": 15,
             "width_max": 30,
-            "worktop": true,
+            "has_worktop": true,
             "allow_edge": true
         },
         {
@@ -44,7 +44,7 @@
             "position_bottom": true,
             "width_min": 10,
             "width_max": 12,
-            "worktop": false,
+            "has_worktop": false,
             "allow_edge": false
         },
         {
@@ -55,7 +55,7 @@
             "position_bottom": true,
             "width_min": 15,
             "width_max": 15,
-            "worktop": false,
+            "has_worktop": false,
             "allow_edge": false
         }
     ]

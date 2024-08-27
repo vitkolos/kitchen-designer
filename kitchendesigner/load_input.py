@@ -1,6 +1,7 @@
 import json
 import jsonschema
-from kitchen import Kitchen, KitchenItem, KitchenPart
+from kitchen import Kitchen, KitchenPart, Fixture, Segment
+from typing import Dict, Any
 
 
 def load() -> Kitchen:
@@ -14,9 +15,9 @@ def load() -> Kitchen:
                 },
                 "required": ["width"]
             },
-            "available_items": {
+            "available_fixtures": {
                 "type": "array",
-                "items": {
+                "fixtures": {
                     "type": "object",
                     "properties": {
                         "name": {"type": "string"},
@@ -26,14 +27,14 @@ def load() -> Kitchen:
                         "position_bottom": {"type": "boolean"},
                         "width_min": {"type": "number"},
                         "width_max": {"type": "number"},
-                        "worktop": {"type": "boolean"},
+                        "has_worktop": {"type": "boolean"},
                         "allow_edge": {"type": "boolean"},
                     },
                     "required": ["name", "width_min"]
                 }
             }
         },
-        "required": ["kitchen_shape", "available_items"]
+        "required": ["kitchen_shape", "available_fixtures"]
     }
 
     with open('input.json') as f:
@@ -43,8 +44,29 @@ def load() -> Kitchen:
     # raises an exception if validation fails
     jsonschema.validate(instance=loaded_data, schema=schema)
 
-    items = [KitchenItem(item['name'], item['zone'], item['width_min'], item['width_max'])
-             for item in loaded_data['available_items']]
-    kitchen = Kitchen(items, [KitchenPart(loaded_data['kitchen_shape']['width'], 10, []), KitchenPart(loaded_data['kitchen_shape']['width']+20, 15, [])])
+    fixtures = []
+
+    def create_kitchen_fixture(fixture: Dict[str, Any], is_top: bool) -> Fixture:
+        return Fixture(fixture['name'], fixture['type'], fixture['zone'], fixture['width_min'], fixture['width_max'], is_top, fixture['has_worktop'], fixture['allow_edge'])
+
+    for fixture in loaded_data['available_fixtures']:
+        if fixture['position_top']:
+            kitchen_fixture_top = create_kitchen_fixture(fixture, is_top=True)
+            fixtures.append(kitchen_fixture_top)
+        if fixture['position_bottom']:
+            kitchen_fixture_bottom = create_kitchen_fixture(fixture, is_top=False)
+            fixtures.append(kitchen_fixture_bottom)
+        if fixture['position_top'] and fixture['position_bottom']:
+            kitchen_fixture_top.name += 'T'
+            kitchen_fixture_bottom.name += 'B'
+            kitchen_fixture_top.complementary_fixture = kitchen_fixture_bottom
+            kitchen_fixture_bottom.complementary_fixture = kitchen_fixture_top
+
+    width: float = loaded_data['kitchen_shape']['width']
+    segment_count = range(int(width)//10)
+    segments = [Segment(i, 0, None, i == 0, i == 0, False)
+                for i in segment_count]
+    parts = [KitchenPart(width, 10, segments)]
+    kitchen = Kitchen(parts, segments, fixtures)
 
     return kitchen

@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def"
 import pyomo.environ as pyo
 database = ['sink', 'fridge', 'dishwasher', 'stove']
 length = 60
@@ -10,13 +11,13 @@ bannedItem = {'sink': 0, 'fridge': 0, 'dishwasher': 0, 'stove': 0}
 itemsInZone = {'sink': 0, 'fridge': 1, 'dishwasher': 1, 'stove': 1}
 
 bannedZoneLeft = 0
-bannedZoneWidth = 48
+bannedZoneWidth = 45
 
 model = pyo.ConcreteModel()
 model.present = pyo.Var(database, within=pyo.Binary)
 model.widths = pyo.Var(segments, bounds=(0, length))
-model.previousWidths = pyo.Var(segments, bounds=(0,length))
-model.previousDiff = pyo.Var(segments, bounds=(0,length))
+model.previousWidths = pyo.Var(segments, bounds=(0, length))
+model.previousDiff = pyo.Var(segments, bounds=(0, length))
 model.previousLarger = pyo.Var(segments, within=pyo.Binary)
 model.xCoords = pyo.Var(segments, bounds=(0, length))
 model.itemWidths = pyo.Var(database, bounds=(0, length))
@@ -27,6 +28,8 @@ model.bannedZoneSide = pyo.Var(database, within=pyo.Binary)
 # https://math.stackexchange.com/a/2753629
 
 # požadavek na minimální šířku spotřebičů
+
+
 def minItemWidth(model, segment, item):
     return model.widths[segment] >= (minWidths[item]*model.pairs[segment, item])
 
@@ -55,14 +58,19 @@ def edgeSegments(model, segment, item, clause):
         case 1: return edgeSegment[segment] <= sum(model.pairs[segment, item2] for item2 in database)
 
 # zakazuje určitý typ položek na určitém místě
+
+
 def banItems(model, item, clause):
     # segmenty se překrývají <=> levý okraj nebo pravý okraj jednoho je mezi okraji druhého
     # segmenty se nepřekrývají <=> pravý okraj jednoho < levý okraj druhého || levý okraj jednoho > pravý okraj druhého
-    match clause:
-        case 0: return (model.itemXCoords[item] + model.itemWidths[item])*bannedItem[item] <= bannedZoneLeft + length*model.bannedZoneSide[item]
-        case 1: return (bannedZoneLeft + bannedZoneWidth)*bannedItem[item] <= model.itemXCoords[item] + length*(1-model.bannedZoneSide[item])
-
-
+    if bannedItem[item] == 1:
+        match clause:
+            # case 0: return (model.itemXCoords[item] + model.itemWidths[item])*bannedItem[item] <= bannedZoneLeft + length*model.bannedZoneSide[item]
+            # case 1: return (bannedZoneLeft + bannedZoneWidth)*bannedItem[item] <= model.itemXCoords[item] + length*(1-model.bannedZoneSide[item])
+            case 0: return model.itemXCoords[item] + model.itemWidths[item] <= bannedZoneLeft + length*model.bannedZoneSide[item]
+            case 1: return bannedZoneLeft + bannedZoneWidth <= model.itemXCoords[item] + length*(1-model.bannedZoneSide[item])
+    else:
+        return pyo.Constraint.Skip
 
 
 # https://towardsdatascience.com/a-comprehensive-guide-to-modeling-techniques-in-mixed-integer-linear-programming-3e96cc1bc03d
@@ -93,6 +101,8 @@ def getPrevious(model, segment, clause):
         case 6: return model.previousDiff[segment] <= M*segmentIsUsed
 
 # definuje vzdálenost segmentu od levého okraje
+
+
 def xCoords(model, segment):
     return model.xCoords[segment] == sum(model.widths[i] for i in segments if i < segment)
 
@@ -145,8 +155,8 @@ model.minItemWidth = pyo.Constraint(segments, database, rule=minItemWidth)
 model.noEmptySegments = pyo.Constraint(segments, rule=noEmptySegments)
 model.edgeSegment = pyo.Constraint(
     segments, database, [0, 1], rule=edgeSegments)
-model.banItems = pyo.Constraint(database, [0,1], rule=banItems)
-model.getPrevious = pyo.Constraint(segments, [-3,-2,-1,0,1,2,3,4,5,6], rule=getPrevious)
+model.banItems = pyo.Constraint(database, [0, 1], rule=banItems)
+model.getPrevious = pyo.Constraint(segments, [-3, -2, -1, 0, 1, 2, 3, 4, 5, 6], rule=getPrevious)
 model.getXCoords = pyo.Constraint(segments, rule=xCoords)
 model.getItemWidths = pyo.Constraint(
     segments, database, [0, 1, 2, 3, 4, 5], rule=itemWidths)
