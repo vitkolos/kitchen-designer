@@ -1,9 +1,9 @@
 import json
 import jsonschema
-from kitchen import Kitchen, KitchenItem
+from kitchen import Kitchen, KitchenItem, KitchenPart
 
 
-def load():
+def load() -> Kitchen:
     schema = {
         "type": "object",
         "properties": {
@@ -45,6 +45,6 @@ def load():
 
     items = [KitchenItem(item['name'], item['zone'], item['width_min'], item['width_max'])
              for item in loaded_data['available_items']]
-    kitchen = Kitchen(loaded_data['kitchen_shape']['width'], items)
+    kitchen = Kitchen(items, [KitchenPart(loaded_data['kitchen_shape']['width'], 10, []), KitchenPart(loaded_data['kitchen_shape']['width']+20, 15, [])])
 
     return kitchen
