@@ -3,11 +3,11 @@
     "kitchen_parts": [
         {
             "name": "part1",
-            "group": 1,
             "position": {
                 "x": 0,
                 "y": 0,
                 "angle": 0,
+                "group_number": 1,
                 "group_offset": 0
             },
             "width": 60,
@@ -15,12 +15,12 @@
         },
         {
             "name": "part2",
-            "group": 1,
             "is_top": true,
             "position": {
                 "x": 20,
                 "y": 15,
                 "angle": 0,
+                "group_number": 1,
                 "group_offset": 20
             },
             "width": 40,

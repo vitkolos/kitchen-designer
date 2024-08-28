@@ -8,7 +8,6 @@
                 "type": "object",
                 "properties": {
                     "name": { "type": "string" },
-                    "group": { "type": "number" },
                     "is_top": { "type": "boolean" },
                     "position": {
                         "type": "object",
@@ -16,6 +15,7 @@
                             "x": { "type": "number" },
                             "y": { "type": "number" },
                             "angle": { "type": "number" },
+                            "group_number": { "type": "number" },
                             "group_offset": { "type": "number" }
                         },
                         "required": ["x", "y", "angle"]

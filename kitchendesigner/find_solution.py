@@ -164,7 +164,7 @@ def set_constraints(model: pyo.Model) -> None:
         fy = model.fixtures_y[fixture]
         so = model.segments_offset[segment]
         fo = model.fixtures_offset[fixture]
-        sg = segment.part.group
+        sg = segment.part.position.group_number
         fg = model.fixtures_group[fixture]
 
         clauses = [
@@ -203,7 +203,8 @@ def set_constraints(model: pyo.Model) -> None:
 
     model.preserve_tall_fixtures = pyo.Constraint(model.fixtures, pyo.RangeSet(3), rule=preserve_tall_fixtures)
 
-    # TODO: ban fixture from specific place (using group), require fixture type, get difference from previous width for each segment
+    # TODO: ban fixture from specific place (using group), require certain fixture type,
+    # get difference from previous width for each segment, add *right* edge segments
 
 
 def set_objective(model: pyo.Model) -> None:

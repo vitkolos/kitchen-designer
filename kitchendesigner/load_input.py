@@ -89,8 +89,8 @@ def load_parts_segments(kitchen_parts_data: List[Dict[str, Any]]) -> tuple[List[
         segment_count = math.ceil(width/units_per_segment)
         part_segments: List[Segment] = []
         position = Position(part_data['position']['x'], part_data['position']['y'],
-                            part_data['position']['angle'], part_data['position']['group_offset'])
-        kitchen_part = KitchenPart(part_data['name'], part_data['group'], is_top, position, width, part_data['depth'], part_segments)
+                            part_data['position']['angle'], part_data['position']['group_number'], part_data['position']['group_offset'])
+        kitchen_part = KitchenPart(part_data['name'], is_top, position, width, part_data['depth'], part_segments)
         parts.append(kitchen_part)
 
         for i in range(segment_count):
