@@ -1,0 +1,48 @@
+{
+    "$schema": "https://json-schema.org/draft-07/schema",
+    "type": "object",
+    "properties": {
+        "kitchen_parts": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "name": { "type": "string" },
+                    "is_top": { "type": "boolean" },
+                    "position": {
+                        "type": "object",
+                        "properties": {
+                            "x": { "type": "number" },
+                            "y": { "type": "number" },
+                            "angle": { "type": "number" }
+                        },
+                        "required": ["x", "y", "angle"]
+                    },
+                    "width": { "type": "number" },
+                    "depth": { "type": "number" }
+                },
+                "required": ["name", "width", "depth", "position"]
+            }
+        },
+        "available_fixtures": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "name": { "type": "string" },
+                    "type": { "type": "string" },
+                    "zone": { "type": "string" },
+                    "position_top": { "type": "boolean" },
+                    "position_bottom": { "type": "boolean" },
+                    "width_min": { "type": "number" },
+                    "width_max": { "type": "number" },
+                    "has_worktop": { "type": "boolean" },
+                    "allow_edge": { "type": "boolean" },
+                    "allow_multiple": { "type": "boolean" }
+                },
+                "required": ["name", "type", "zone", "width_min", "width_max"]
+            }
+        }
+    },
+    "required": ["kitchen_parts", "available_fixtures"]
+}

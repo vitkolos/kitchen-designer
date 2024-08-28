@@ -1,6 +1,7 @@
-from kitchen import Kitchen, Segment, Fixture, KitchenPart
+from kitchen import *
 from typing import Any
 import pyomo.environ as pyo
+import math
 
 
 def solve(kitchen: Kitchen) -> None:
@@ -21,12 +22,13 @@ def create_sets(kitchen: Kitchen, model: pyo.Model) -> None:
 
 def create_variables(model: pyo.Model) -> None:
     max_fixture_width = 100
+    max_canvas_size = 800
 
     model.present = pyo.Var(model.fixtures, within=pyo.Binary)
     model.widths = pyo.Var(model.segments, bounds=(0, max_fixture_width))
     model.pairs = pyo.Var(model.segments, model.fixtures, within=pyo.Binary)
-
-    model.width_min = pyo.Param(model.fixtures, initialize=lambda model, fixture: fixture.width_min, mutable=True)
+    model.segments_x = pyo.Var(model.segments, within=(-max_canvas_size, max_canvas_size))
+    model.segments_y = pyo.Var(model.segments, within=(-max_canvas_size, max_canvas_size))
 
 
 def set_constraints(model: pyo.Model) -> None:
@@ -66,7 +68,7 @@ def set_constraints(model: pyo.Model) -> None:
 
     def correct_vertical_placement(model: pyo.Model, segment: Segment, fixture: Fixture) -> Any:
         """ensure that the vertical placement of fixtures is correct (in the pair, is_top of the fixture should equal is_top of the segment)"""
-        if segment.is_top == fixture.is_top:
+        if segment.part.is_top == fixture.is_top:
             return pyo.Constraint.Skip
         else:
             return model.pairs[segment, fixture] == 0
@@ -88,29 +90,81 @@ def set_constraints(model: pyo.Model) -> None:
     model.max_width_rule = pyo.Constraint(model.segments, model.fixtures, rule=max_width_rule)
 
     def part_width(model: pyo.Model, part: KitchenPart) -> Any:
-        """total width of the kitchen part should be equal to the sum of the widths of the fixtures"""
-        return sum(model.widths[segment] for segment in part.segments) == part.width
+        """total width of the kitchen part should be less then or equal to the sum of the widths of the fixtures"""
+        return sum(model.widths[segment] for segment in part.segments) <= part.width
 
     model.part_width = pyo.Constraint(model.parts, rule=part_width)
 
     # EDGE RULES
 
     def edge_fixture(model: pyo.Model, segment: Segment, fixture: Fixture) -> Any:
-        """segment is edge & contains a fixture => fixture is edge"""
-        return int(segment.is_edge)*model.pairs[segment, fixture] <= int(fixture.allow_edge)
+        """edge segment cannot contain a non-edge fixture"""
+        if segment.is_edge and not fixture.allow_edge:
+            return model.pairs[segment, fixture] == 0
+        else:
+            return pyo.Constraint.Skip
 
     model.edge_fixture = pyo.Constraint(model.segments, model.fixtures, rule=edge_fixture)
 
     def edge_segment(model: pyo.Model, segment: Segment) -> Any:
         """segment is edge => contains at least one fixture"""
-        return int(segment.is_edge) <= sum(model.pairs[segment, fixture] for fixture in model.fixtures)
+        if segment.is_edge:
+            return sum(model.pairs[segment, fixture] for fixture in model.fixtures) >= 1
+        else:
+            return pyo.Constraint.Skip
 
     model.edge_segment = pyo.Constraint(model.segments, rule=edge_segment)
 
+    # POSITION RULES
+    def get_segments_x(model: pyo.Model, segment: Segment) -> Any:
+        """determines x coordinate of the segment"""
+        if segment.is_first:
+            return model.segments_x[segment] == segment.part.position.x
+        else:
+            cos_alpha = math.cos(math.radians(segment.part.position.angle))
+            return model.segments_x[segment] == model.segments_x[segment.previous] + model.widths[segment.previous] * cos_alpha
+
+    model.get_segments_x = pyo.Constraint(model.segments, rule=get_segments_x)
+
+    def get_segments_y(model: pyo.Model, segment: Segment) -> Any:
+        """determines y coordinate of the segment"""
+        if segment.is_first:
+            return model.segments_y[segment] == segment.part.position.y
+        else:
+            sin_alpha = math.sin(math.radians(segment.part.position.angle))
+            return model.segments_y[segment] == model.segments_y[segment.previous] + model.widths[segment.previous] * sin_alpha
+
+    model.get_segments_y = pyo.Constraint(model.segments, rule=get_segments_y)
+
+    # definuje šířku položky a její vzdálenost zleva
+    # def itemWidths(model: pyo.Model, segment: Segment, fixture: Fixture, clause: int) -> Any:
+    #     M = max_fixture_width
+    #     y = model.pairs[segment, item]
+    #     x = model.widths[segment]
+    #     z = model.itemWidths[item]
+
+    #     x1 = model.xCoords[segment]
+    #     z1 = model.itemXCoords[item]
+
+    #     match clause:
+    #         case 0: return x-M*(1-y) <= z
+    #         case 1: return z <= x+M*(1-y)
+    #         case 2: return z <= M*model.present[item]
+
+    #         case 3: return x1-M*(1-y) <= z1
+    #         case 4: return z1 <= x1+M*(1-y)
+    #         case 5: return z1 <= M*model.present[item]
+
 
 def set_objective(model: pyo.Model) -> None:
-    model.fitness = pyo.Objective(rule=lambda model: sum(
-        model.present[fixture] for fixture in model.fixtures), sense=pyo.maximize)
+    def fitness(model: pyo.Model) -> Any:
+        # prefer more present fixtures
+        present_count = sum(model.present[fixture] for fixture in model.fixtures)
+        # prefer greater total width
+        width_coeff = sum(model.widths[segment] for segment in model.segments) / 10
+        return present_count + width_coeff
+
+    model.fitness = pyo.Objective(rule=fitness, sense=pyo.maximize)
 
 
 def find_model(model: pyo.Model) -> None:
@@ -122,8 +176,11 @@ def find_model(model: pyo.Model) -> None:
 
 def save_result(kitchen: Kitchen, model: pyo.Model) -> None:
     for segment in kitchen.segments:
-        segment.width = pyo.value(model.widths[segment])
+        segment.width = pyo.value(model.widths[segment], exception=False)
+
+        if segment.width is None:
+            segment.width = 0
 
         for fixture in kitchen.fixtures:
-            if pyo.value(model.pairs[segment, fixture]):
+            if pyo.value(model.pairs[segment, fixture], exception=False):
                 segment.fixture = fixture

@@ -1,5 +1,5 @@
 from __future__ import annotations
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List
 
 
@@ -27,12 +27,12 @@ class Fixture:
 @dataclass
 class Segment:
     number: int
+    part: KitchenPart
     width: float
     fixture: Fixture | None
     is_edge: bool
     is_first: bool
-    is_top: bool
-    previous: Segment | None
+    previous: Segment | None = field(repr=False)
 
     def __str__(self) -> str:
         return 'segment' + str(self.number)
@@ -42,8 +42,17 @@ class Segment:
 
 
 @dataclass
+class Position:
+    x: float
+    y: float
+    angle: float
+
+
+@dataclass
 class KitchenPart:
     name: str
+    is_top: bool
+    position: Position
     width: float
     depth: float
     segments: List[Segment]

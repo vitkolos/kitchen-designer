@@ -1,7 +1,28 @@
 {
-    "kitchen_shape": {
-        "width": 60
-    },
+    "$schema": "kitchendesigner/input.schema.json",
+    "kitchen_parts": [
+        {
+            "name": "part1",
+            "position": {
+                "x": 0,
+                "y": 0,
+                "angle": 10
+            },
+            "width": 60,
+            "depth": 30
+        },
+        {
+            "name": "part2",
+            "is_top": true,
+            "position": {
+                "x": 20,
+                "y": 15,
+                "angle": 10
+            },
+            "width": 40,
+            "depth": 15
+        }
+    ],
     "available_fixtures": [
         {
             "name": "sink1",
@@ -57,6 +78,16 @@
             "width_max": 15,
             "has_worktop": false,
             "allow_edge": false
+        },
+        {
+            "name": "cupboard1",
+            "type": "cupboard",
+            "zone": "storage",
+            "position_top": true,
+            "width_min": 10,
+            "width_max": 20,
+            "has_worktop": true,
+            "allow_multiple": true
         }
     ]
 }
