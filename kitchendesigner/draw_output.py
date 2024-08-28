@@ -15,8 +15,8 @@ def draw(kitchen: Kitchen) -> None:
         angle = part.position.angle
 
         if part.is_top:
-            rectangle_real = patches.Rectangle((x-eps, y-eps), part.width+2*eps, part.depth + 2*eps,
-                                      angle=angle, rotation_point=(x, y), fill=False, ec='#00000033')
+            rectangle_real = patches.Rectangle((x, y), part.width, part.depth, angle=angle,
+                                               rotation_point=(x, y), fc='#cccccc33', ec='#00000033', linestyle=':')
             ax.add_patch(rectangle_real)
             x, y = rotate_point_deg((x, y + part.depth * 1.5), (x, y), angle)
 

@@ -3,21 +3,25 @@
     "kitchen_parts": [
         {
             "name": "part1",
+            "group": 1,
             "position": {
                 "x": 0,
                 "y": 0,
-                "angle": 10
+                "angle": 0,
+                "group_offset": 0
             },
             "width": 60,
             "depth": 30
         },
         {
             "name": "part2",
+            "group": 1,
             "is_top": true,
             "position": {
                 "x": 20,
                 "y": 15,
-                "angle": 10
+                "angle": 0,
+                "group_offset": 20
             },
             "width": 40,
             "depth": 15
@@ -44,7 +48,7 @@
             "width_min": 15,
             "width_max": 30,
             "has_worktop": false,
-            "allow_edge": true
+            "allow_edge": false
         },
         {
             "name": "dishwasher1",
@@ -87,7 +91,8 @@
             "width_min": 10,
             "width_max": 20,
             "has_worktop": true,
-            "allow_multiple": true
+            "allow_multiple": true,
+            "allow_edge": true
         }
     ]
 }

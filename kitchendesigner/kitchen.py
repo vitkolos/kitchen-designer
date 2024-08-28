@@ -46,11 +46,13 @@ class Position:
     x: float
     y: float
     angle: float
+    group_offset: float
 
 
 @dataclass
 class KitchenPart:
     name: str
+    group: int
     is_top: bool
     position: Position
     width: float

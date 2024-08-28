@@ -3,6 +3,10 @@ from typing import Any
 import pyomo.environ as pyo
 import math
 
+max_fixture_width = 100
+max_canvas_size = 800
+max_group_count = 50
+
 
 def solve(kitchen: Kitchen) -> None:
     model = pyo.ConcreteModel()
@@ -21,19 +25,22 @@ def create_sets(kitchen: Kitchen, model: pyo.Model) -> None:
 
 
 def create_variables(model: pyo.Model) -> None:
-    max_fixture_width = 100
-    max_canvas_size = 800
-
     model.present = pyo.Var(model.fixtures, within=pyo.Binary)
-    model.widths = pyo.Var(model.segments, bounds=(0, max_fixture_width))
     model.pairs = pyo.Var(model.segments, model.fixtures, within=pyo.Binary)
+
+    model.widths = pyo.Var(model.segments, bounds=(0, max_fixture_width))
     model.segments_x = pyo.Var(model.segments, within=(-max_canvas_size, max_canvas_size))
     model.segments_y = pyo.Var(model.segments, within=(-max_canvas_size, max_canvas_size))
+    model.segments_offset = pyo.Var(model.segments, within=(0, max_canvas_size))
+
+    model.fixtures_x = pyo.Var(model.fixtures, within=(-max_canvas_size, max_canvas_size))
+    model.fixtures_y = pyo.Var(model.fixtures, within=(-max_canvas_size, max_canvas_size))
+    model.fixtures_width = pyo.Var(model.fixtures, bounds=(0, max_fixture_width))
+    model.fixtures_offset = pyo.Var(model.fixtures, bounds=(0, max_fixture_width))
+    model.fixtures_group = pyo.Var(model.fixtures, bounds=(0, max_group_count))
 
 
 def set_constraints(model: pyo.Model) -> None:
-    max_fixture_width = 100
-
     # BASIC RULES
 
     def presence_pairs_pairing(model: pyo.Model, fixture: Fixture) -> Any:
@@ -77,17 +84,13 @@ def set_constraints(model: pyo.Model) -> None:
 
     # WIDTH RULES
 
-    def min_width_rule(model: pyo.Model, segment: Segment, fixture: Fixture) -> Any:
-        """minimal fixture width"""
-        return model.widths[segment] >= (fixture.width_min*model.pairs[segment, fixture])
+    def width_rules(model: pyo.Model, segment: Segment, fixture: Fixture, clause: int) -> Any:
+        """enforce minimal and maximal fixture width"""
+        match clause:
+            case 1: return model.widths[segment] >= (fixture.width_min*model.pairs[segment, fixture])
+            case 2: return model.widths[segment] <= fixture.width_max + max_fixture_width * (1-model.pairs[segment, fixture])
 
-    model.min_width_rule = pyo.Constraint(model.segments, model.fixtures, rule=min_width_rule)
-
-    def max_width_rule(model: pyo.Model, segment: Segment, fixture: Fixture) -> Any:
-        """maximal fixture width"""
-        return model.widths[segment] <= fixture.width_max + max_fixture_width * (1-model.pairs[segment, fixture])
-
-    model.max_width_rule = pyo.Constraint(model.segments, model.fixtures, rule=max_width_rule)
+    model.width_rules = pyo.Constraint(model.segments, model.fixtures, pyo.RangeSet(2), rule=width_rules)
 
     def part_width(model: pyo.Model, part: KitchenPart) -> Any:
         """total width of the kitchen part should be less then or equal to the sum of the widths of the fixtures"""
@@ -116,6 +119,7 @@ def set_constraints(model: pyo.Model) -> None:
     model.edge_segment = pyo.Constraint(model.segments, rule=edge_segment)
 
     # POSITION RULES
+
     def get_segments_x(model: pyo.Model, segment: Segment) -> Any:
         """determines x coordinate of the segment"""
         if segment.is_first:
@@ -136,24 +140,70 @@ def set_constraints(model: pyo.Model) -> None:
 
     model.get_segments_y = pyo.Constraint(model.segments, rule=get_segments_y)
 
-    # definuje šířku položky a její vzdálenost zleva
-    # def itemWidths(model: pyo.Model, segment: Segment, fixture: Fixture, clause: int) -> Any:
-    #     M = max_fixture_width
-    #     y = model.pairs[segment, item]
-    #     x = model.widths[segment]
-    #     z = model.itemWidths[item]
+    def get_segments_offset(model: pyo.Model, segment: Segment) -> Any:
+        """determines offset of the segment relative to the group"""
+        if segment.is_first:
+            return model.segments_offset[segment] == segment.part.position.group_offset
+        else:
+            return model.segments_offset[segment] == model.segments_offset[segment.previous] + model.widths[segment.previous]
 
-    #     x1 = model.xCoords[segment]
-    #     z1 = model.itemXCoords[item]
+    model.get_segments_offset = pyo.Constraint(model.segments, rule=get_segments_offset)
 
-    #     match clause:
-    #         case 0: return x-M*(1-y) <= z
-    #         case 1: return z <= x+M*(1-y)
-    #         case 2: return z <= M*model.present[item]
+    def get_fixtures_width_position(model: pyo.Model, segment: Segment, fixture: Fixture, clause: int) -> Any:
+        """propagates width, coordinates and group info from segments to their assigned fixtures \n
+        absent fixtures should have only zeroes (except for coordinates)"""
+        MW = max_fixture_width
+        MC = max_canvas_size
+        p = model.pairs[segment, fixture]
 
-    #         case 3: return x1-M*(1-y) <= z1
-    #         case 4: return z1 <= x1+M*(1-y)
-    #         case 5: return z1 <= M*model.present[item]
+        sw = model.widths[segment]
+        fw = model.fixtures_width[fixture]
+        sx = model.segments_x[segment]
+        fx = model.fixtures_x[fixture]
+        sy = model.segments_y[segment]
+        fy = model.fixtures_y[fixture]
+        so = model.segments_offset[segment]
+        fo = model.fixtures_offset[fixture]
+        sg = segment.part.group
+        fg = model.fixtures_group[fixture]
+
+        clauses = [
+            sw-MW*(1-p) <= fw,  # lower bound
+            fw <= sw+MW*(1-p),  # upper bound
+            fw <= MW*model.present[fixture],  # zero if absent
+
+            sx-MC*(1-p) <= fx,
+            fx <= sx+MC*(1-p),
+
+            sy-MC*(1-p) <= fy,
+            fy <= sy+MC*(1-p),
+
+            so-MC*(1-p) <= fo,
+            fo <= so+MC*(1-p),
+            fo <= MC*model.present[fixture],
+
+            sg-MC*(1-p) <= fg,
+            fg <= sg+MC*(1-p),
+            fg <= MC*model.present[fixture]
+        ]
+
+        return clauses[clause-1]
+
+    model.get_fixtures_width_coords_offset = pyo.Constraint(
+        model.segments, model.fixtures, pyo.RangeSet(13), rule=get_fixtures_width_position)
+
+    def preserve_tall_fixtures(model: pyo.Model, fixture: Fixture, clause: int) -> Any:
+        if fixture.complementary_fixture is not None:
+            match clause:
+                case 1: return model.fixtures_offset[fixture] <= model.fixtures_offset[fixture.complementary_fixture]
+                case 2: return model.fixtures_group[fixture] <= model.fixtures_group[fixture.complementary_fixture]
+                case 3: return model.fixtures_width[fixture] <= model.fixtures_width[fixture.complementary_fixture]
+        else:
+            return pyo.Constraint.Skip
+
+    model.preserve_tall_fixtures = pyo.Constraint(model.fixtures, pyo.RangeSet(3), rule=preserve_tall_fixtures)
+
+    # TODO: ban fixture from specific place (using group), require fixture type, get difference from previous width for each segment
 
 
 def set_objective(model: pyo.Model) -> None:
