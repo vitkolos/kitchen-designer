@@ -1,8 +1,7 @@
 from kitchen import *
-from typing import Any, List
+from typing import Any, Iterator
 import pyomo.environ as pyo
 import math
-import sys
 
 max_fixture_width = 100
 max_canvas_size = 800
@@ -23,11 +22,16 @@ class KitchenModel(pyo.ConcreteModel):  # type: ignore[misc]
 
         # sets
         model.fixtures = pyo.Set(initialize=kitchen.fixtures)
-        model.segments = pyo.Set(initialize=kitchen.segments)
+        model.segments: Iterator[Segment] = pyo.Set(initialize=kitchen.segments)
         model.parts = pyo.Set(initialize=kitchen.parts)
+        model.groups = pyo.Set(initialize=kitchen.groups)
+        model.rules_all = pyo.Set(initialize=kitchen.rules)
+        model.rules_section = pyo.Set(initialize=model.rules_all, filter=lambda _, rule: rule.area == 'group_section')
 
-        # product variable
+        # product variables
         model.pairs = pyo.Var(model.segments, model.fixtures, domain=pyo.Binary)
+        model.present_groups = pyo.Var(model.groups, model.fixtures, domain=pyo.Binary)
+        model.rules_section_bin = pyo.Var(model.rules_section, model.fixtures, domain=pyo.Binary)
 
         # segment variables
         model.widths = pyo.Var(model.segments, domain=pyo.NonNegativeReals, bounds=(0, max_fixture_width))
@@ -40,14 +44,13 @@ class KitchenModel(pyo.ConcreteModel):  # type: ignore[misc]
         model.fixtures_x = pyo.Var(model.fixtures, domain=pyo.Reals, bounds=(-max_canvas_size, max_canvas_size))
         model.fixtures_y = pyo.Var(model.fixtures, domain=pyo.Reals, bounds=(-max_canvas_size, max_canvas_size))
         model.fixtures_width = pyo.Var(model.fixtures, domain=pyo.NonNegativeReals, bounds=(0, max_fixture_width))
-        model.fixtures_offset = pyo.Var(model.fixtures, domain=pyo.NonNegativeReals, bounds=(0, max_fixture_width))
-        model.fixtures_group = pyo.Var(model.fixtures, domain=pyo.NonNegativeIntegers, bounds=(0, max_group_count))
+        model.fixtures_offset = pyo.Var(model.fixtures, domain=pyo.NonNegativeReals, bounds=(0, max_canvas_size))
 
 
 def set_constraints(model: KitchenModel) -> None:
     clause_count = 0
 
-    def get_clause(clauses: List[Any], current_clause: int) -> Any:
+    def get_clause(clauses: list[Any], current_clause: int) -> Any:
         """simplifies defining multiple constraints in one function"""
         if current_clause == 1:
             clause_real_count = len(clauses)
@@ -124,14 +127,16 @@ def set_constraints(model: KitchenModel) -> None:
 
     model.edge_fixture = pyo.Constraint(model.segments, model.fixtures, rule=edge_fixture)
 
-    def edge_segment(model: KitchenModel, segment: Segment) -> Any:
-        """segment is edge => contains at least one fixture"""
-        if segment.is_edge:
-            return sum(model.pairs[segment, fixture] for fixture in model.fixtures) >= 1
-        else:
-            return pyo.Constraint.Skip
+    # the constraint below is not neccessary thanks to "empty segments need to be followed by another empty segments"
 
-    model.edge_segment = pyo.Constraint(model.segments, rule=edge_segment)
+    # def edge_segment(model: KitchenModel, segment: Segment) -> Any:
+    #     """segment is edge => contains at least one fixture"""
+    #     if segment.is_edge:
+    #         return sum(model.pairs[segment, fixture] for fixture in model.fixtures) >= 1
+    #     else:
+    #         return pyo.Constraint.Skip
+
+    # model.edge_segment = pyo.Constraint(model.segments, rule=edge_segment)
 
     # POSITION RULES
 
@@ -165,7 +170,7 @@ def set_constraints(model: KitchenModel) -> None:
     model.get_segments_offset = pyo.Constraint(model.segments, rule=get_segments_offset)
 
     def get_fixtures_width_position(model: KitchenModel, segment: Segment, fixture: Fixture, current_clause: int) -> Any:
-        """propagates width, coordinates and group info from segments to their assigned fixtures \n
+        """propagates width and coordinates from segments to their assigned fixtures \n
         absent fixtures should have only zeroes (except for coordinates)"""
         MW = max_fixture_width
         MC = max_canvas_size
@@ -179,8 +184,6 @@ def set_constraints(model: KitchenModel) -> None:
         fy = model.fixtures_y[fixture]
         so = model.segments_offset[segment]
         fo = model.fixtures_offset[fixture]
-        sg = segment.part.position.group_number
-        fg = model.fixtures_group[fixture]
 
         clauses = [
             sw-MW*(1-p) <= fw,  # lower bound
@@ -195,44 +198,103 @@ def set_constraints(model: KitchenModel) -> None:
 
             so-MC*(1-p) <= fo,
             fo <= so+MC*(1-p),
-            fo <= MC*model.present[fixture],
-
-            sg-MC*(1-p) <= fg,
-            fg <= sg+MC*(1-p),
-            fg <= MC*model.present[fixture]
+            fo <= MC*model.present[fixture]
         ]
         return get_clause(clauses, current_clause)
 
     model.get_fixtures_width_coords_offset = pyo.Constraint(
-        model.segments, model.fixtures, pyo.RangeSet(clause_count := 13), rule=get_fixtures_width_position)
+        model.segments, model.fixtures, pyo.RangeSet(clause_count := 10), rule=get_fixtures_width_position)
 
-    def preserve_tall_fixtures(model: KitchenModel, fixture: Fixture, current_clause: int) -> Any:
+    def get_present_groups(model: KitchenModel, group: int, fixture: Fixture) -> Any:
+        """checks if the fixture is present in the group"""
+        return sum(model.pairs[segment, fixture] for segment in model.segments if segment.part.position.group_number == group) == model.present_groups[group, fixture]
+
+    model.get_present_groups = pyo.Constraint(model.groups, model.fixtures, rule=get_present_groups)
+
+    # TALL FIXTURES RULES
+
+    def preserve_tall_fixtures_offset_width(model: KitchenModel, fixture: Fixture, current_clause: int) -> Any:
         """ensures that tall fixtures (with top and bottom part) are not split in half"""
         if fixture.complementary_fixture is not None:
             return get_clause([
                 model.fixtures_offset[fixture] <= model.fixtures_offset[fixture.complementary_fixture],
-                model.fixtures_group[fixture] <= model.fixtures_group[fixture.complementary_fixture],
                 model.fixtures_width[fixture] <= model.fixtures_width[fixture.complementary_fixture]
             ], current_clause)
         else:
             return pyo.Constraint.Skip
 
-    model.preserve_tall_fixtures = pyo.Constraint(
-        model.fixtures, pyo.RangeSet(clause_count := 3), rule=preserve_tall_fixtures)
+    model.preserve_tall_fixtures_offset_width = pyo.Constraint(
+        model.fixtures, pyo.RangeSet(clause_count := 2), rule=preserve_tall_fixtures_offset_width)
 
-    # BAN/REQUIRE RULES
+    def preserve_tall_fixtures_group(model: KitchenModel, group: int, fixture: Fixture) -> Any:
+        """ensures that tall fixtures (with top and bottom part) are not split in half"""
+        if fixture.complementary_fixture is not None:
+            return model.present_groups[group, fixture] <= model.present_groups[group, fixture.complementary_fixture]
+        else:
+            return pyo.Constraint.Skip
 
-    # TODO: ban fixture from specific place (using group), require certain fixture type,
-    # get difference from previous width for each segment, add *right* edge segments,
+    model.preserve_tall_fixtures_group = pyo.Constraint(model.groups, model.fixtures, rule=preserve_tall_fixtures_group)
+
+    # EXCLUDE/INCLUDE RULES
+
+    def attr_matches(rule: Rule, fixture: Fixture) -> Any:
+        """check if the fixture is affected by the rule"""
+        return getattr(fixture, rule.attribute_name) == rule.attribute_value
+
+    def evaluate_user_rules(model: KitchenModel, rule: Rule) -> Any:
+        """applies some of the user-defined rules"""
+        match rule.type:
+            case 'include':
+                match rule.area:
+                    case 'kitchen':
+                        return sum(model.present[fixture] for fixture in model.fixtures if attr_matches(rule, fixture)) >= 1
+                    case 'group':
+                        return sum(model.present_groups[rule.group, fixture] for fixture in model.fixtures if attr_matches(rule, fixture)) >= 1
+                    case 'group_section':
+                        # this is the first part of the rule (see evaluate_user_rules_section)
+                        return sum(model.rules_section_bin[rule, fixture] for fixture in model.fixtures if attr_matches(rule, fixture)) >= 1
+            case 'exclude':
+                match rule.area:
+                    case 'group':
+                        return sum(model.present_groups[rule.group, fixture] for fixture in model.fixtures if attr_matches(rule, fixture)) <= 0
+                    case 'group_section':
+                        return pyo.Constraint.Skip  # the constraints are in evaluate_user_rules_section
+
+    model.evaluate_user_rules = pyo.Constraint(model.rules_all, rule=evaluate_user_rules)
+
+    def evaluate_user_rules_section(model: KitchenModel, rule: Rule, fixture: Fixture, current_clause: int) -> Any:
+        """applies the user-defined rules that use sections"""
+        if attr_matches(rule, fixture):
+            b = model.rules_section_bin[rule, fixture]
+            correct_group = model.present_groups[rule.group, fixture]
+
+            match rule.type:
+                case 'include':
+                    # this is the second part of the rule (see evaluate_user_rules)
+                    clauses = [
+                        correct_group >= b,
+                        model.fixtures_offset[fixture] >= rule.section_offset*b,
+                        model.fixtures_offset[fixture] + model.fixtures_width[fixture] <=
+                        rule.section_offset + rule.section_width + (1-b)*max_canvas_size
+                    ]
+                case 'exclude':
+                    clauses = [
+                        model.fixtures_offset[fixture] + model.fixtures_width[fixture] <=
+                        rule.section_offset + max_canvas_size*b + max_canvas_size*(1-correct_group),
+                        rule.section_offset + rule.section_width <=
+                        model.fixtures_offset[fixture] + max_canvas_size*(1-b) + max_canvas_size*(1-correct_group),
+                        pyo.Constraint.Skip
+                    ]
+
+            return get_clause(clauses, current_clause)
+        else:
+            return pyo.Constraint.Skip
+
+    model.evaluate_user_rules_section = pyo.Constraint(
+        model.rules_section, model.fixtures, pyo.RangeSet(clause_count := 3), rule=evaluate_user_rules_section)
+
+    # TODO: get difference from previous width for each segment, add *right* edge segments
     # FIXME: break symmetries for allow_multiple
-
-    """
-    • ban fixtures in group
-    • ban fixtures in group part
-    • require one or more fixtures in kitchen
-    • require one or more fixtures in group
-    • require one or more fixtures in group part
-    """
 
 
 def set_objective(model: KitchenModel) -> None:

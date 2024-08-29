@@ -1,6 +1,5 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
-from typing import List
 
 
 @dataclass
@@ -57,7 +56,7 @@ class KitchenPart:
     position: Position
     width: float
     depth: float
-    segments: List[Segment]
+    segments: list[Segment]
 
     def __str__(self) -> str:
         return self.name
@@ -67,7 +66,25 @@ class KitchenPart:
 
 
 @dataclass
+class Rule:
+    type: str
+    area: str
+    attribute_name: str
+    attribute_value: str
+    group: int = 0
+    section_offset: float = 0
+    section_width: float = 0
+
+    def __str__(self) -> str:
+        return f"{self.type}/{self.area}/{self.attribute_name}={self.attribute_value};{self.group},{self.section_offset},{self.section_width}"
+
+    def __hash__(self) -> int:
+        return id(self)
+
+@dataclass
 class Kitchen:
-    parts: List[KitchenPart]
-    segments: List[Segment]
-    fixtures: List[Fixture]
+    groups: list[int]
+    parts: list[KitchenPart]
+    segments: list[Segment]
+    rules: list[Rule]
+    fixtures: list[Fixture]

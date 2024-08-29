@@ -3,17 +3,20 @@ import jsonschema
 import pathlib
 import math
 from kitchen import *
-from typing import Dict, Any, List
+from typing import Any
 
 
 def load() -> Kitchen:
     loaded_data = load_data_from_files()
     fixtures = load_fictures(loaded_data['available_fixtures'])
     parts, kitchen_segments = load_parts_segments(loaded_data['kitchen_parts'])
-    return Kitchen(parts, kitchen_segments, fixtures)
+    rules = load_rules(loaded_data['rules'])
+    preprocess_fixtures_and_rules(fixtures, rules)
+    groups = list(set(part.position.group_number for part in parts))
+    return Kitchen(groups, parts, kitchen_segments, rules, fixtures)
 
 
-def get_bool_field(fixture: Dict[str, Any], key: str) -> Any:
+def get_bool_field(fixture: dict[str, Any], key: str) -> Any:
     """helper function, default for bool field is false (if not present in JSON)"""
     if key in fixture:
         return fixture[key]
@@ -34,11 +37,11 @@ def load_data_from_files() -> Any:
     return loaded_data
 
 
-def load_fictures(available_fixtures_data: List[Dict[str, Any]]) -> List[Fixture]:
+def load_fictures(available_fixtures_data: list[dict[str, Any]]) -> list[Fixture]:
     fixtures = []
     multiple_fixture_copy_count = 2  # FIXME: break symmetries
 
-    def create_kitchen_fixture(fixture_data: Dict[str, Any], is_top: bool) -> Fixture:
+    def create_kitchen_fixture(fixture_data: dict[str, Any], is_top: bool) -> Fixture:
         fixture = Fixture(fixture_data['name'], fixture_data['type'], fixture_data['zone'], fixture_data['width_min'],
                           fixture_data['width_max'], is_top, get_bool_field(fixture_data, 'has_worktop'), get_bool_field(fixture_data, 'allow_edge'))
         return fixture
@@ -75,7 +78,7 @@ def load_fictures(available_fixtures_data: List[Dict[str, Any]]) -> List[Fixture
     return fixtures
 
 
-def load_parts_segments(kitchen_parts_data: List[Dict[str, Any]]) -> tuple[List[KitchenPart], List[Segment]]:
+def load_parts_segments(kitchen_parts_data: list[dict[str, Any]]) -> tuple[list[KitchenPart], list[Segment]]:
     units_per_segment = 10
     segment: Segment | None = None
 
@@ -87,7 +90,7 @@ def load_parts_segments(kitchen_parts_data: List[Dict[str, Any]]) -> tuple[List[
         width: float = part_data['width']
         is_top: bool = get_bool_field(part_data, 'is_top')
         segment_count = math.ceil(width/units_per_segment)
-        part_segments: List[Segment] = []
+        part_segments: list[Segment] = []
         position = Position(part_data['position']['x'], part_data['position']['y'],
                             part_data['position']['angle'], part_data['position']['group_number'], part_data['position']['group_offset'])
         kitchen_part = KitchenPart(part_data['name'], is_top, position, width, part_data['depth'], part_segments)
@@ -100,3 +103,31 @@ def load_parts_segments(kitchen_parts_data: List[Dict[str, Any]]) -> tuple[List[
             kitchen_segments.append(segment)
 
     return parts, kitchen_segments
+
+
+def load_rules(rules_data: list[dict[str, Any]]) -> list[Rule]:
+    # raises exceptions if input JSON is invalid
+    rules = []
+
+    for rule_data in rules_data:
+        rule = Rule(rule_data['type'], rule_data['area'], rule_data['attribute_name'], rule_data['attribute_value'])
+
+        if rule.area == 'group':
+            rule.group = rule_data['group']
+        elif rule.area == 'group_section':
+            rule.group = rule_data['group']
+            rule.section_offset = rule_data['section_offset']
+            rule.section_width = rule_data['section_width']
+
+        rules.append(rule)
+
+    return rules
+
+
+def preprocess_fixtures_and_rules(fixtures: list[Fixture], rules: list[Rule]) -> None:
+    for rule in rules:
+        if rule.type == 'exclude' and rule.area == 'kitchen':
+            fixtures[:] = [fixture for fixture in fixtures if
+                           getattr(fixture, rule.attribute_name) != rule.attribute_value]
+
+    rules[:] = [rule for rule in rules if rule.type != 'exclude' or rule.area != 'kitchen']

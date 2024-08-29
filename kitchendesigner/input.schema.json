@@ -18,12 +18,28 @@
                             "group_number": { "type": "number" },
                             "group_offset": { "type": "number" }
                         },
-                        "required": ["x", "y", "angle"]
+                        "required": ["x", "y", "angle", "group_number", "group_offset"]
                     },
                     "width": { "type": "number" },
                     "depth": { "type": "number" }
                 },
                 "required": ["name", "width", "depth", "position"]
+            }
+        },
+        "rules": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "type": { "enum": ["exclude", "include"] },
+                    "area": { "enum": ["kitchen", "group", "group_section"] },
+                    "attribute_name": { "enum": ["name", "type", "zone"] },
+                    "attribute_value": { "type": "string" },
+                    "group": { "type": "number" },
+                    "section_offset": { "type": "number" },
+                    "section_width": { "type": "number" }
+                },
+                "required": ["type", "area", "attribute_name", "attribute_value"]
             }
         },
         "available_fixtures": {
