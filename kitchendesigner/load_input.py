@@ -36,7 +36,7 @@ def load_data_from_files() -> Any:
 
 def load_fictures(available_fixtures_data: List[Dict[str, Any]]) -> List[Fixture]:
     fixtures = []
-    multiple_fixture_copy_count = 2  # fixme: break symmetries
+    multiple_fixture_copy_count = 2  # FIXME: break symmetries
 
     def create_kitchen_fixture(fixture_data: Dict[str, Any], is_top: bool) -> Fixture:
         fixture = Fixture(fixture_data['name'], fixture_data['type'], fixture_data['zone'], fixture_data['width_min'],
