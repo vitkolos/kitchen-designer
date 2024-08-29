@@ -29,8 +29,8 @@ class Segment:
     part: KitchenPart
     width: float
     fixture: Fixture | None
-    is_edge: bool
     is_first: bool
+    is_last: bool
     previous: Segment | None = field(repr=False)
 
     def __str__(self) -> str:
@@ -56,6 +56,8 @@ class KitchenPart:
     position: Position
     width: float
     depth: float
+    edge_left: bool
+    edge_right: bool
     segments: list[Segment]
 
     def __str__(self) -> str:

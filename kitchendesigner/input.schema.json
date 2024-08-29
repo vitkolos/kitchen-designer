@@ -21,7 +21,9 @@
                         "required": ["x", "y", "angle", "group_number", "group_offset"]
                     },
                     "width": { "type": "number" },
-                    "depth": { "type": "number" }
+                    "depth": { "type": "number" },
+                    "edge_left": { "type": "boolean" },
+                    "edge_right": { "type": "boolean" }
                 },
                 "required": ["name", "width", "depth", "position"]
             }

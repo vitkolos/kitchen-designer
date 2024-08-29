@@ -89,15 +89,17 @@ def load_parts_segments(kitchen_parts_data: list[dict[str, Any]]) -> tuple[list[
     for part_data in kitchen_parts_data:
         width: float = part_data['width']
         is_top: bool = get_bool_field(part_data, 'is_top')
+        edge_left: bool = get_bool_field(part_data, 'edge_left')
+        edge_right: bool = get_bool_field(part_data, 'edge_right')
         segment_count = math.ceil(width/units_per_segment)
         part_segments: list[Segment] = []
         position = Position(part_data['position']['x'], part_data['position']['y'],
                             part_data['position']['angle'], part_data['position']['group_number'], part_data['position']['group_offset'])
-        kitchen_part = KitchenPart(part_data['name'], is_top, position, width, part_data['depth'], part_segments)
+        kitchen_part = KitchenPart(part_data['name'], is_top, position, width, part_data['depth'], edge_left, edge_right, part_segments)
         parts.append(kitchen_part)
 
         for i in range(segment_count):
-            segment = Segment(segment_number, kitchen_part, 0, None, i == 0, i == 0, segment)
+            segment = Segment(segment_number, kitchen_part, 0, None, i == 0, i == segment_count - 1, segment)
             segment_number += 1
             part_segments.append(segment)
             kitchen_segments.append(segment)
@@ -106,7 +108,7 @@ def load_parts_segments(kitchen_parts_data: list[dict[str, Any]]) -> tuple[list[
 
 
 def load_rules(rules_data: list[dict[str, Any]]) -> list[Rule]:
-    # raises exceptions if input JSON is invalid
+    # might raise exceptions if input is not correct
     rules = []
 
     for rule_data in rules_data:

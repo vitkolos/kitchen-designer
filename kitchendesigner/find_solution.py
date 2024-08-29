@@ -3,6 +3,7 @@ from typing import Any, Iterator
 import pyomo.environ as pyo
 import math
 
+min_fixture_width = 1
 max_fixture_width = 100
 max_canvas_size = 800
 max_group_count = 50
@@ -35,9 +36,12 @@ class KitchenModel(pyo.ConcreteModel):  # type: ignore[misc]
 
         # segment variables
         model.widths = pyo.Var(model.segments, domain=pyo.NonNegativeReals, bounds=(0, max_fixture_width))
+        model.used = pyo.Var(model.segments, domain=pyo.Binary)
         model.segments_x = pyo.Var(model.segments, domain=pyo.Reals, bounds=(-max_canvas_size, max_canvas_size))
         model.segments_y = pyo.Var(model.segments, domain=pyo.Reals, bounds=(-max_canvas_size, max_canvas_size))
         model.segments_offset = pyo.Var(model.segments, domain=pyo.NonNegativeReals, bounds=(0, max_canvas_size))
+        model.segments_width_diff = pyo.Var(model.segments, domain=pyo.NonNegativeReals, bounds=(0, max_fixture_width))
+        model.segments_previous_larger = pyo.Var(model.segments, domain=pyo.Binary)
 
         # fixture variables
         model.present = pyo.Var(model.fixtures, domain=pyo.Binary)
@@ -66,11 +70,11 @@ def set_constraints(model: KitchenModel) -> None:
 
     model.presence_pairs_pairing = pyo.Constraint(model.fixtures, rule=presence_pairs_pairing)
 
-    def segment_capacity(model: KitchenModel, segment: Segment) -> Any:
-        """each segment can contain at most one fixture"""
-        return sum(model.pairs[segment, fixture] for fixture in model.fixtures) <= 1
+    def segment_used(model: KitchenModel, segment: Segment) -> Any:
+        """check if segment is used"""
+        return model.used[segment] == sum(model.pairs[segment, fixture] for fixture in model.fixtures)
 
-    model.segment_capacity = pyo.Constraint(model.segments, rule=segment_capacity)
+    model.segment_used = pyo.Constraint(model.segments, rule=segment_used)
 
     def previous_segment_zero(model: KitchenModel, segment: Segment) -> Any:
         """empty segments need to be followed by another empty segments \n
@@ -78,16 +82,21 @@ def set_constraints(model: KitchenModel) -> None:
         if segment.previous == None or segment.is_first:
             return pyo.Constraint.Skip
         else:
-            # this assumes that minimal fixture width is always >= 1
-            return model.widths[segment.previous] * max_fixture_width >= model.widths[segment]
+            return model.used[segment] <= model.used[segment.previous]
 
     model.previous_segment_zero = pyo.Constraint(model.segments, rule=previous_segment_zero)
 
     def no_empty_nonzero_segments(model: KitchenModel, segment: Segment) -> Any:
         """segment has width => it contains a fixture"""
-        return model.widths[segment] <= (max_fixture_width * sum(model.pairs[segment, fixture] for fixture in model.fixtures))
+        return model.widths[segment] <= max_fixture_width * model.used[segment]
 
     model.no_empty_nonzero_segments = pyo.Constraint(model.segments, rule=no_empty_nonzero_segments)
+
+    def no_zero_nonempty_segments(model: KitchenModel, segment: Segment) -> Any:
+        """segment contains a fixture => its width is at least minimal"""
+        return model.widths[segment] >= min_fixture_width * model.used[segment]
+
+    model.no_zero_nonempty_segments = pyo.Constraint(model.segments, rule=no_zero_nonempty_segments)
 
     def correct_vertical_placement(model: KitchenModel, segment: Segment, fixture: Fixture) -> Any:
         """ensure that the vertical placement of fixtures is correct (in the pair, is_top of the fixture should equal is_top of the segment)"""
@@ -119,24 +128,31 @@ def set_constraints(model: KitchenModel) -> None:
     # EDGE RULES
 
     def edge_fixture(model: KitchenModel, segment: Segment, fixture: Fixture) -> Any:
-        """edge segment cannot contain a non-edge fixture"""
-        if segment.is_edge and not fixture.allow_edge:
+        """first edge segment cannot contain a non-edge fixture"""
+        if segment.is_first and segment.part.edge_left and not fixture.allow_edge:
             return model.pairs[segment, fixture] == 0
         else:
             return pyo.Constraint.Skip
 
     model.edge_fixture = pyo.Constraint(model.segments, model.fixtures, rule=edge_fixture)
 
-    # the constraint below is not neccessary thanks to "empty segments need to be followed by another empty segments"
+    def edge_fixture_last_segment(model: KitchenModel, segment: Segment, fixture: Fixture) -> Any:
+        """last edge segment cannot contain a non-edge fixture"""
+        if segment.is_last and segment.part.edge_right and not fixture.allow_edge:
+            return model.pairs[segment, fixture] == 0
+        else:
+            return pyo.Constraint.Skip
 
-    # def edge_segment(model: KitchenModel, segment: Segment) -> Any:
-    #     """segment is edge => contains at least one fixture"""
-    #     if segment.is_edge:
-    #         return sum(model.pairs[segment, fixture] for fixture in model.fixtures) >= 1
-    #     else:
-    #         return pyo.Constraint.Skip
+    model.edge_fixture_last_segment = pyo.Constraint(model.segments, model.fixtures, rule=edge_fixture_last_segment)
 
-    # model.edge_segment = pyo.Constraint(model.segments, rule=edge_segment)
+    def edge_fixture_empty_segment(model: KitchenModel, segment: Segment, fixture: Fixture) -> Any:
+        """non-edge fixture has to be succeeded by another fixture"""
+        if not segment.is_first and segment.part.edge_right and not fixture.allow_edge:
+            return model.pairs[segment.previous, fixture] <= model.used[segment]
+        else:
+            return pyo.Constraint.Skip
+
+    model.edge_fixture_empty_segment = pyo.Constraint(model.segments, model.fixtures, rule=edge_fixture_empty_segment)
 
     # POSITION RULES
 
@@ -265,6 +281,7 @@ def set_constraints(model: KitchenModel) -> None:
     def evaluate_user_rules_section(model: KitchenModel, rule: Rule, fixture: Fixture, current_clause: int) -> Any:
         """applies the user-defined rules that use sections"""
         if attr_matches(rule, fixture):
+            M = max_canvas_size
             b = model.rules_section_bin[rule, fixture]
             correct_group = model.present_groups[rule.group, fixture]
 
@@ -274,15 +291,15 @@ def set_constraints(model: KitchenModel) -> None:
                     clauses = [
                         correct_group >= b,
                         model.fixtures_offset[fixture] >= rule.section_offset*b,
-                        model.fixtures_offset[fixture] + model.fixtures_width[fixture] <=
-                        rule.section_offset + rule.section_width + (1-b)*max_canvas_size
+                        model.fixtures_offset[fixture] + model.fixtures_width[fixture]
+                        <= rule.section_offset + rule.section_width + (1-b)*M
                     ]
                 case 'exclude':
                     clauses = [
-                        model.fixtures_offset[fixture] + model.fixtures_width[fixture] <=
-                        rule.section_offset + max_canvas_size*b + max_canvas_size*(1-correct_group),
-                        rule.section_offset + rule.section_width <=
-                        model.fixtures_offset[fixture] + max_canvas_size*(1-b) + max_canvas_size*(1-correct_group),
+                        model.fixtures_offset[fixture] + model.fixtures_width[fixture]
+                        <= rule.section_offset + M*b + M*(1-correct_group),
+                        rule.section_offset + rule.section_width
+                        <= model.fixtures_offset[fixture] + M*(1-b) + M*(1-correct_group),
                         pyo.Constraint.Skip
                     ]
 
@@ -293,7 +310,34 @@ def set_constraints(model: KitchenModel) -> None:
     model.evaluate_user_rules_section = pyo.Constraint(
         model.rules_section, model.fixtures, pyo.RangeSet(clause_count := 3), rule=evaluate_user_rules_section)
 
-    # TODO: get difference from previous width for each segment, add *right* edge segments
+    # WIDTH DIFFERENCE RULES
+
+    def get_width_difference(model: KitchenModel, segment: Segment, current_clause: int) -> Any:
+        """detects width differences between neighbouring segments"""
+        width_difference = model.segments_width_diff[segment]
+
+        if segment.is_first:
+            if current_clause == 1:
+                return width_difference <= 0
+            else:
+                return pyo.Constraint.Skip
+        else:
+            M = max_fixture_width
+            current_width = model.widths[segment]
+            previous_width = model.widths[segment.previous]
+
+            clauses = [
+                width_difference >= previous_width - current_width - M*(1-model.used[segment]),
+                width_difference >= current_width - previous_width - M*(1-model.used[segment]),
+                width_difference <= previous_width - current_width + M*(1-model.segments_previous_larger[segment]),
+                width_difference <= current_width - previous_width + M*model.segments_previous_larger[segment],
+                width_difference <= M*model.used[segment]
+            ]
+            return get_clause(clauses, current_clause)
+
+    model.get_width_difference = pyo.Constraint(
+        model.segments, pyo.RangeSet(clause_count := 5), rule=get_width_difference)
+
     # FIXME: break symmetries for allow_multiple
 
 
@@ -301,9 +345,11 @@ def set_objective(model: KitchenModel) -> None:
     def fitness(model: KitchenModel) -> Any:
         # prefer more present fixtures
         present_count = sum(model.present[fixture] for fixture in model.fixtures)
-        # prefer greater total width
+        # prefer larger total width
         width_coeff = sum(model.widths[segment] for segment in model.segments) / 10
-        return present_count + width_coeff
+        # prefer smaller width differences
+        width_diff = sum(model.segments_width_diff[segment] for segment in model.segments) / -10
+        return present_count + width_coeff + width_diff
 
     model.fitness = pyo.Objective(rule=fitness, sense=pyo.maximize)
 
