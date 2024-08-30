@@ -6,7 +6,7 @@ import math
 min_fixture_width = 1
 max_fixture_width = 100
 max_canvas_size = 800
-max_group_count = 50
+max_segment_count = 100
 
 
 def solve(kitchen: Kitchen) -> None:
@@ -28,8 +28,9 @@ class KitchenModel(pyo.ConcreteModel):  # type: ignore[misc]
         model.groups = pyo.Set(initialize=kitchen.groups)
         model.rules_all = pyo.Set(initialize=kitchen.rules)
         model.rules_section = pyo.Set(initialize=model.rules_all, filter=lambda _, rule: rule.area == 'group_section')
+        model.zones = pyo.Set(initialize=['cleaning', 'storage', 'cooking'])
 
-        # product variables
+        # product variables (except for zone ones)
         model.pairs = pyo.Var(model.segments, model.fixtures, domain=pyo.Binary)
         model.present_groups = pyo.Var(model.groups, model.fixtures, domain=pyo.Binary)
         model.rules_section_bin = pyo.Var(model.rules_section, model.fixtures, domain=pyo.Binary)
@@ -37,18 +38,26 @@ class KitchenModel(pyo.ConcreteModel):  # type: ignore[misc]
         # segment variables
         model.widths = pyo.Var(model.segments, domain=pyo.NonNegativeReals, bounds=(0, max_fixture_width))
         model.used = pyo.Var(model.segments, domain=pyo.Binary)
-        model.segments_x = pyo.Var(model.segments, domain=pyo.Reals, bounds=(-max_canvas_size, max_canvas_size))
-        model.segments_y = pyo.Var(model.segments, domain=pyo.Reals, bounds=(-max_canvas_size, max_canvas_size))
+        model.segments_x = pyo.Var(model.segments, domain=pyo.Reals, bounds=(0, max_canvas_size))
+        model.segments_y = pyo.Var(model.segments, domain=pyo.Reals, bounds=(0, max_canvas_size))
         model.segments_offset = pyo.Var(model.segments, domain=pyo.NonNegativeReals, bounds=(0, max_canvas_size))
         model.segments_width_diff = pyo.Var(model.segments, domain=pyo.NonNegativeReals, bounds=(0, max_fixture_width))
         model.segments_previous_larger = pyo.Var(model.segments, domain=pyo.Binary)
 
         # fixture variables
         model.present = pyo.Var(model.fixtures, domain=pyo.Binary)
-        model.fixtures_x = pyo.Var(model.fixtures, domain=pyo.Reals, bounds=(-max_canvas_size, max_canvas_size))
-        model.fixtures_y = pyo.Var(model.fixtures, domain=pyo.Reals, bounds=(-max_canvas_size, max_canvas_size))
+        model.fixtures_x = pyo.Var(model.fixtures, domain=pyo.Reals, bounds=(0, max_canvas_size))
+        model.fixtures_y = pyo.Var(model.fixtures, domain=pyo.Reals, bounds=(0, max_canvas_size))
         model.fixtures_width = pyo.Var(model.fixtures, domain=pyo.NonNegativeReals, bounds=(0, max_fixture_width))
         model.fixtures_offset = pyo.Var(model.fixtures, domain=pyo.NonNegativeReals, bounds=(0, max_canvas_size))
+        model.fixtures_segment_number = pyo.Var(
+            model.fixtures, domain=pyo.NonNegativeIntegers, bounds=(0, max_segment_count))
+
+        # zone variables
+        model.zones_x = pyo.Var(model.zones, domain=pyo.Reals, bounds=(0, max_canvas_size))
+        model.zones_y = pyo.Var(model.zones, domain=pyo.Reals, bounds=(0, max_canvas_size))
+        model.zones_x_helper = pyo.Var(model.fixtures, domain=pyo.Reals, bounds=(0, max_canvas_size))
+        model.zones_y_helper = pyo.Var(model.fixtures, domain=pyo.Reals, bounds=(0, max_canvas_size))
 
 
 def set_constraints(model: KitchenModel) -> None:
@@ -79,7 +88,7 @@ def set_constraints(model: KitchenModel) -> None:
     def previous_segment_zero(model: KitchenModel, segment: Segment) -> Any:
         """empty segments need to be followed by another empty segments \n
         this breaks symmetries in the solution"""
-        if segment.previous == None or segment.is_first:
+        if segment.previous is None or segment.is_first:
             return pyo.Constraint.Skip
         else:
             return model.used[segment] <= model.used[segment.previous]
@@ -157,22 +166,26 @@ def set_constraints(model: KitchenModel) -> None:
     # POSITION RULES
 
     def get_segments_x(model: KitchenModel, segment: Segment) -> Any:
-        """determines x coordinate of the segment"""
+        """determines x coordinate of the *center* of the segment"""
+        sin_alpha = math.sin(math.radians(segment.part.position.angle))
+        cos_alpha = math.cos(math.radians(segment.part.position.angle))
+
         if segment.is_first:
-            return model.segments_x[segment] == segment.part.position.x
+            return model.segments_x[segment] == segment.part.position.x + (model.widths[segment]/2) * cos_alpha - (segment.part.depth/2) * sin_alpha
         else:
-            cos_alpha = math.cos(math.radians(segment.part.position.angle))
-            return model.segments_x[segment] == model.segments_x[segment.previous] + model.widths[segment.previous] * cos_alpha
+            return model.segments_x[segment] == model.segments_x[segment.previous] + (model.widths[segment]/2 + model.widths[segment.previous]/2) * cos_alpha
 
     model.get_segments_x = pyo.Constraint(model.segments, rule=get_segments_x)
 
     def get_segments_y(model: KitchenModel, segment: Segment) -> Any:
-        """determines y coordinate of the segment"""
+        """determines y coordinate of the *center* of the segment"""
+        sin_alpha = math.sin(math.radians(segment.part.position.angle))
+        cos_alpha = math.cos(math.radians(segment.part.position.angle))
+
         if segment.is_first:
-            return model.segments_y[segment] == segment.part.position.y
+            return model.segments_y[segment] == segment.part.position.y + (model.widths[segment]/2) * sin_alpha + (segment.part.depth/2) * cos_alpha
         else:
-            sin_alpha = math.sin(math.radians(segment.part.position.angle))
-            return model.segments_y[segment] == model.segments_y[segment.previous] + model.widths[segment.previous] * sin_alpha
+            return model.segments_y[segment] == model.segments_y[segment.previous] + (model.widths[segment]/2 + model.widths[segment.previous]/2) * sin_alpha
 
     model.get_segments_y = pyo.Constraint(model.segments, rule=get_segments_y)
 
@@ -187,9 +200,10 @@ def set_constraints(model: KitchenModel) -> None:
 
     def get_fixtures_width_position(model: KitchenModel, segment: Segment, fixture: Fixture, current_clause: int) -> Any:
         """propagates width and coordinates from segments to their assigned fixtures \n
-        absent fixtures should have only zeroes (except for coordinates)"""
+        absent fixtures should have only zeroes"""
         MW = max_fixture_width
         MC = max_canvas_size
+        MN = max_segment_count
         p = model.pairs[segment, fixture]
 
         sw = model.widths[segment]
@@ -200,26 +214,39 @@ def set_constraints(model: KitchenModel) -> None:
         fy = model.fixtures_y[fixture]
         so = model.segments_offset[segment]
         fo = model.fixtures_offset[fixture]
+        sn = segment.number
+        fn = model.fixtures_segment_number[fixture]
 
         clauses = [
+            # segment width -> fixture width
             sw-MW*(1-p) <= fw,  # lower bound
             fw <= sw+MW*(1-p),  # upper bound
             fw <= MW*model.present[fixture],  # zero if absent
 
+            # segment x -> fixture x
             sx-MC*(1-p) <= fx,
             fx <= sx+MC*(1-p),
+            fx <= MC*model.present[fixture],
 
+            # segment y -> fixture y
             sy-MC*(1-p) <= fy,
             fy <= sy+MC*(1-p),
+            fy <= MC*model.present[fixture],
 
+            # segment offset -> fixture offset
             so-MC*(1-p) <= fo,
             fo <= so+MC*(1-p),
-            fo <= MC*model.present[fixture]
+            fo <= MC*model.present[fixture],
+
+            # segment number -> fixture segment_number
+            sn-MN*(1-p) <= fn,
+            fn <= sn+MN*(1-p),
+            fn <= MN*model.present[fixture],
         ]
         return get_clause(clauses, current_clause)
 
     model.get_fixtures_width_coords_offset = pyo.Constraint(
-        model.segments, model.fixtures, pyo.RangeSet(clause_count := 10), rule=get_fixtures_width_position)
+        model.segments, model.fixtures, pyo.RangeSet(clause_count := 15), rule=get_fixtures_width_position)
 
     def get_present_groups(model: KitchenModel, group: int, fixture: Fixture) -> Any:
         """checks if the fixture is present in the group"""
@@ -338,7 +365,58 @@ def set_constraints(model: KitchenModel) -> None:
     model.get_width_difference = pyo.Constraint(
         model.segments, pyo.RangeSet(clause_count := 5), rule=get_width_difference)
 
-    # FIXME: break symmetries for allow_multiple
+    # MULTIPLE SAME FIXTURES RULE
+
+    def sort_multiple_same_fixtures(model: KitchenModel, fixture: Fixture) -> Any:
+        """older clones must have lower segment number \n
+        this breaks symmetries in the solution"""
+        if fixture.older_sibling is not None:
+            return model.fixtures_segment_number[fixture.older_sibling] <= model.fixtures_segment_number[fixture]
+        else:
+            return pyo.Constraint.Skip
+
+    model.sort_multiple_same_fixtures = pyo.Constraint(model.fixtures, rule=sort_multiple_same_fixtures)
+
+    # ZONE RULES
+
+    def get_zone_coordinates(model: KitchenModel, fixture: Fixture, current_clause: int) -> Any:
+        zone = fixture.zone
+
+        if zone in model.zones:
+            M = max_canvas_size
+            x = model.zones_x[zone]
+            xf = model.zones_x_helper[fixture]
+            y = model.zones_y[zone]
+            yf = model.zones_y_helper[fixture]
+            pf = model.present[fixture]
+
+            clauses = [
+                xf <= pf*M,
+                xf >= x-M*(1-pf),
+                xf <= x,
+
+                yf <= pf*M,
+                yf >= y-M*(1-pf),
+                yf <= y
+            ]
+            return get_clause(clauses, current_clause)
+        else:
+            return pyo.Constraint.Skip
+
+    model.get_zone_coordinates = pyo.Constraint(
+        model.fixtures, pyo.RangeSet(clause_count := 6), rule=get_zone_coordinates)
+
+    def get_zone_coordinates_sums(model: KitchenModel, zone: str, current_clause: int) -> Any:
+        clauses = [
+            sum(model.zones_x_helper[fixture] for fixture in model.fixtures if fixture.zone == zone)
+            == sum(model.fixtures_x[fixture] for fixture in model.fixtures if fixture.zone == zone),
+            sum(model.zones_y_helper[fixture] for fixture in model.fixtures if fixture.zone == zone)
+            == sum(model.fixtures_y[fixture] for fixture in model.fixtures if fixture.zone == zone),
+        ]
+        return get_clause(clauses, current_clause)
+
+    model.get_zone_coordinates_sums = pyo.Constraint(
+        model.zones, pyo.RangeSet(clause_count := 2), rule=get_zone_coordinates_sums)
 
 
 def set_objective(model: KitchenModel) -> None:

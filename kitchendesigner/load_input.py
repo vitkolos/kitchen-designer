@@ -39,7 +39,7 @@ def load_data_from_files() -> Any:
 
 def load_fictures(available_fixtures_data: list[dict[str, Any]]) -> list[Fixture]:
     fixtures = []
-    multiple_fixture_copy_count = 2  # FIXME: break symmetries
+    multiple_fixture_copy_count = 3
 
     def create_kitchen_fixture(fixture_data: dict[str, Any], is_top: bool) -> Fixture:
         fixture = Fixture(fixture_data['name'], fixture_data['type'], fixture_data['zone'], fixture_data['width_min'],
@@ -47,33 +47,42 @@ def load_fictures(available_fixtures_data: list[dict[str, Any]]) -> list[Fixture
         return fixture
 
     for fixture_data in available_fixtures_data:
-        fixture_copy_count = 1
         position_top = get_bool_field(fixture_data, 'position_top')
         position_bottom = get_bool_field(fixture_data, 'position_bottom')
+        previous_fixture_top: Fixture | None
+        previous_fixture_bottom: Fixture | None
 
         if get_bool_field(fixture_data, 'allow_multiple'):
             fixture_copy_count = multiple_fixture_copy_count
+        else:
+            fixture_copy_count = 1
 
         for i in range(fixture_copy_count):
-            if position_top:
-                kitchen_fixture_top = create_kitchen_fixture(fixture_data, is_top=True)
-                fixtures.append(kitchen_fixture_top)
+            # create fixtures
+            kitchen_fixture_top = create_kitchen_fixture(fixture_data, is_top=True)
+            kitchen_fixture_bottom = create_kitchen_fixture(fixture_data, is_top=False)
 
-                if i > 0:
-                    kitchen_fixture_top.name += f'_{i}'
-
-            if position_bottom:
-                kitchen_fixture_bottom = create_kitchen_fixture(fixture_data, is_top=False)
-                fixtures.append(kitchen_fixture_bottom)
-
-                if i > 0:
-                    kitchen_fixture_bottom.name += f'_{i}'
+            if i > 0:
+                kitchen_fixture_top.name += f'_{i}'
+                kitchen_fixture_bottom.name += f'_{i}'
+                kitchen_fixture_top.older_sibling = None if position_bottom else previous_fixture_top
+                kitchen_fixture_bottom.older_sibling = previous_fixture_bottom
 
             if position_top and position_bottom:
                 kitchen_fixture_top.name += 'T'
                 kitchen_fixture_bottom.name += 'B'
                 kitchen_fixture_top.complementary_fixture = kitchen_fixture_bottom
                 kitchen_fixture_bottom.complementary_fixture = kitchen_fixture_top
+
+            previous_fixture_top = kitchen_fixture_top
+            previous_fixture_bottom = kitchen_fixture_bottom
+
+            # append fixtures to lists
+            if position_top:
+                fixtures.append(kitchen_fixture_top)
+
+            if position_bottom:
+                fixtures.append(kitchen_fixture_bottom)
 
     return fixtures
 
@@ -84,7 +93,7 @@ def load_parts_segments(kitchen_parts_data: list[dict[str, Any]]) -> tuple[list[
 
     parts = []
     kitchen_segments = []
-    segment_number = 0
+    segment_number = 1
 
     for part_data in kitchen_parts_data:
         width: float = part_data['width']
@@ -93,9 +102,11 @@ def load_parts_segments(kitchen_parts_data: list[dict[str, Any]]) -> tuple[list[
         edge_right: bool = get_bool_field(part_data, 'edge_right')
         segment_count = math.ceil(width/units_per_segment)
         part_segments: list[Segment] = []
+        # TODO: check that the entire kitchen can fit in positive coordinates
         position = Position(part_data['position']['x'], part_data['position']['y'],
                             part_data['position']['angle'], part_data['position']['group_number'], part_data['position']['group_offset'])
-        kitchen_part = KitchenPart(part_data['name'], is_top, position, width, part_data['depth'], edge_left, edge_right, part_segments)
+        kitchen_part = KitchenPart(part_data['name'], is_top, position, width,
+                                   part_data['depth'], edge_left, edge_right, part_segments)
         parts.append(kitchen_part)
 
         for i in range(segment_count):

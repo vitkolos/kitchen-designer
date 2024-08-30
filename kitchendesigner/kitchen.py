@@ -13,6 +13,7 @@ class Fixture:
     has_worktop: bool
     allow_edge: bool
     complementary_fixture: Fixture | None = None
+    older_sibling: Fixture | None = field(default=None, repr=False)
 
     def __str__(self) -> str:
         return self.name
