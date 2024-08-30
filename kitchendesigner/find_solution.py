@@ -11,7 +11,7 @@ max_segment_count = 100
 
 def solve(kitchen: Kitchen) -> None:
     model = KitchenModel(kitchen)
-    set_constraints(model)
+    set_constraints(kitchen, model)
     set_objective(model)
     find_model(model)
     save_result(kitchen, model)
@@ -28,9 +28,9 @@ class KitchenModel(pyo.ConcreteModel):  # type: ignore[misc]
         model.groups = pyo.Set(initialize=kitchen.groups)
         model.rules_all = pyo.Set(initialize=kitchen.rules)
         model.rules_section = pyo.Set(initialize=model.rules_all, filter=lambda _, rule: rule.area == 'group_section')
-        model.zones = pyo.Set(initialize=['cleaning', 'storage', 'cooking'])
+        model.zones = pyo.Set(initialize=[zone.name for zone in kitchen.zones if zone.is_optimized])
 
-        # product variables (except for zone ones)
+        # product variables
         model.pairs = pyo.Var(model.segments, model.fixtures, domain=pyo.Binary)
         model.present_groups = pyo.Var(model.groups, model.fixtures, domain=pyo.Binary)
         model.rules_section_bin = pyo.Var(model.rules_section, model.fixtures, domain=pyo.Binary)
@@ -38,29 +38,37 @@ class KitchenModel(pyo.ConcreteModel):  # type: ignore[misc]
         # segment variables
         model.widths = pyo.Var(model.segments, domain=pyo.NonNegativeReals, bounds=(0, max_fixture_width))
         model.used = pyo.Var(model.segments, domain=pyo.Binary)
-        model.segments_x = pyo.Var(model.segments, domain=pyo.Reals, bounds=(0, max_canvas_size))
-        model.segments_y = pyo.Var(model.segments, domain=pyo.Reals, bounds=(0, max_canvas_size))
+        model.segments_x = pyo.Var(model.segments, domain=pyo.NonNegativeReals, bounds=(0, max_canvas_size))
+        model.segments_y = pyo.Var(model.segments, domain=pyo.NonNegativeReals, bounds=(0, max_canvas_size))
         model.segments_offset = pyo.Var(model.segments, domain=pyo.NonNegativeReals, bounds=(0, max_canvas_size))
         model.segments_width_diff = pyo.Var(model.segments, domain=pyo.NonNegativeReals, bounds=(0, max_fixture_width))
         model.segments_previous_larger = pyo.Var(model.segments, domain=pyo.Binary)
 
         # fixture variables
         model.present = pyo.Var(model.fixtures, domain=pyo.Binary)
-        model.fixtures_x = pyo.Var(model.fixtures, domain=pyo.Reals, bounds=(0, max_canvas_size))
-        model.fixtures_y = pyo.Var(model.fixtures, domain=pyo.Reals, bounds=(0, max_canvas_size))
+        model.fixtures_x = pyo.Var(model.fixtures, domain=pyo.NonNegativeReals, bounds=(0, max_canvas_size))
+        model.fixtures_y = pyo.Var(model.fixtures, domain=pyo.NonNegativeReals, bounds=(0, max_canvas_size))
         model.fixtures_width = pyo.Var(model.fixtures, domain=pyo.NonNegativeReals, bounds=(0, max_fixture_width))
         model.fixtures_offset = pyo.Var(model.fixtures, domain=pyo.NonNegativeReals, bounds=(0, max_canvas_size))
         model.fixtures_segment_number = pyo.Var(
             model.fixtures, domain=pyo.NonNegativeIntegers, bounds=(0, max_segment_count))
+        model.zones_x_helper = pyo.Var(model.fixtures, domain=pyo.NonNegativeReals, bounds=(0, max_canvas_size))
+        model.zones_y_helper = pyo.Var(model.fixtures, domain=pyo.NonNegativeReals, bounds=(0, max_canvas_size))
+        model.fixtures_zone_x_dist = pyo.Var(model.fixtures, domain=pyo.NonNegativeReals, bounds=(0, max_canvas_size), initialize=0)
+        model.fixtures_zone_x_further = pyo.Var(model.fixtures, domain=pyo.Binary, initialize=0)
+        model.fixtures_zone_y_dist = pyo.Var(model.fixtures, domain=pyo.NonNegativeReals, bounds=(0, max_canvas_size), initialize=0)
+        model.fixtures_zone_y_further = pyo.Var(model.fixtures, domain=pyo.Binary, initialize=0)
 
         # zone variables
-        model.zones_x = pyo.Var(model.zones, domain=pyo.Reals, bounds=(0, max_canvas_size))
-        model.zones_y = pyo.Var(model.zones, domain=pyo.Reals, bounds=(0, max_canvas_size))
-        model.zones_x_helper = pyo.Var(model.fixtures, domain=pyo.Reals, bounds=(0, max_canvas_size))
-        model.zones_y_helper = pyo.Var(model.fixtures, domain=pyo.Reals, bounds=(0, max_canvas_size))
+        model.zones_x = pyo.Var(model.zones, domain=pyo.NonNegativeReals, bounds=(0, max_canvas_size))
+        model.zones_y = pyo.Var(model.zones, domain=pyo.NonNegativeReals, bounds=(0, max_canvas_size))
+        model.zones_x_dist = pyo.Var(model.zones, domain=pyo.NonNegativeReals, bounds=(0, max_canvas_size), initialize=0)
+        model.zones_x_further = pyo.Var(model.zones, domain=pyo.Binary, initialize=0)
+        model.zones_y_dist = pyo.Var(model.zones, domain=pyo.NonNegativeReals, bounds=(0, max_canvas_size), initialize=0)
+        model.zones_y_further = pyo.Var(model.zones, domain=pyo.Binary, initialize=0)
 
 
-def set_constraints(model: KitchenModel) -> None:
+def set_constraints(kitchen: Kitchen, model: KitchenModel) -> None:
     clause_count = 0
 
     def get_clause(clauses: list[Any], current_clause: int) -> Any:
@@ -379,7 +387,8 @@ def set_constraints(model: KitchenModel) -> None:
 
     # ZONE RULES
 
-    def get_zone_coordinates(model: KitchenModel, fixture: Fixture, current_clause: int) -> Any:
+    def get_zone_coordinates_sync(model: KitchenModel, fixture: Fixture, current_clause: int) -> Any:
+        """first part of the calculation of the average coordinates of the zone fixtures"""
         zone = fixture.zone
 
         if zone in model.zones:
@@ -403,10 +412,11 @@ def set_constraints(model: KitchenModel) -> None:
         else:
             return pyo.Constraint.Skip
 
-    model.get_zone_coordinates = pyo.Constraint(
-        model.fixtures, pyo.RangeSet(clause_count := 6), rule=get_zone_coordinates)
+    model.get_zone_coordinates_sync = pyo.Constraint(
+        model.fixtures, pyo.RangeSet(clause_count := 6), rule=get_zone_coordinates_sync)
 
     def get_zone_coordinates_sums(model: KitchenModel, zone: str, current_clause: int) -> Any:
+        """second part of the calculation of the average coordinates of the zone fixtures"""
         clauses = [
             sum(model.zones_x_helper[fixture] for fixture in model.fixtures if fixture.zone == zone)
             == sum(model.fixtures_x[fixture] for fixture in model.fixtures if fixture.zone == zone),
@@ -418,16 +428,104 @@ def set_constraints(model: KitchenModel) -> None:
     model.get_zone_coordinates_sums = pyo.Constraint(
         model.zones, pyo.RangeSet(clause_count := 2), rule=get_zone_coordinates_sums)
 
+    def get_fixture_zone_distance(model: KitchenModel, fixture: Fixture, current_clause: int) -> Any:
+        """calculates the distance each fixture has from the zone center"""
+        p = model.present[fixture]
+        M = max_canvas_size
+
+        x_dist = model.fixtures_zone_x_dist[fixture]
+        x_further = model.fixtures_zone_x_further[fixture]
+        y_dist = model.fixtures_zone_y_dist[fixture]
+        y_further = model.fixtures_zone_y_further[fixture]
+
+        if fixture.zone in model.zones:
+            fixture_x = model.fixtures_x[fixture]
+            zone_x = model.zones_x[fixture.zone]
+            fixture_y = model.fixtures_y[fixture]
+            zone_y = model.zones_y[fixture.zone]
+
+            clauses = [
+                x_dist >= zone_x - fixture_x - M*(1-p),
+                x_dist >= fixture_x - zone_x - M*(1-p),
+                x_dist <= zone_x - fixture_x + M*x_further,
+                x_dist <= fixture_x - zone_x + M*(1-x_further),
+                x_dist <= M*p,
+
+                y_dist >= zone_y - fixture_y - M*(1-p),
+                y_dist >= fixture_y - zone_y - M*(1-p),
+                y_dist <= zone_y - fixture_y + M*y_further,
+                y_dist <= fixture_y - zone_y + M*(1-y_further),
+                y_dist <= M*p,
+            ]
+            return get_clause(clauses, current_clause)
+        elif current_clause == 1:
+            return x_dist <= 0
+        elif current_clause == 2:
+            return y_dist <= 0
+        else:
+            return pyo.Constraint.Skip
+
+    model.get_fixture_zone_distance = pyo.Constraint(
+        model.fixtures, pyo.RangeSet(clause_count := 10), rule=get_fixture_zone_distance)
+
+    def get_zone_center_distance(model: KitchenModel, zone: str, current_clause: int) -> Any:
+        """how far is the zone center from the optimum"""
+        zone_obj = next(z for z in kitchen.zones if z.name == zone)
+        M = max_canvas_size
+
+        x_dist = model.zones_x_dist[zone]
+        x_further = model.zones_x_further[zone]
+        y_dist = model.zones_y_dist[zone]
+        y_further = model.zones_y_further[zone]
+
+        if zone_obj.optimal_center is not None:
+            zone_x = model.zones_x[zone]
+            optimal_x = zone_obj.optimal_center[0]
+            zone_y = model.zones_y[zone]
+            optimal_y = zone_obj.optimal_center[1]
+
+            clauses = [
+                x_dist >= optimal_x - zone_x,
+                x_dist >= zone_x - optimal_x,
+                x_dist <= optimal_x - zone_x + M*x_further,
+                x_dist <= zone_x - optimal_x + M*(1-x_further),
+
+                y_dist >= optimal_y - zone_y,
+                y_dist >= zone_y - optimal_y,
+                y_dist <= optimal_y - zone_y + M*y_further,
+                y_dist <= zone_y - optimal_y + M*(1-y_further),
+            ]
+            return get_clause(clauses, current_clause)
+        elif current_clause == 1:
+            return x_dist <= 0
+        elif current_clause == 2:
+            return y_dist <= 0
+        else:
+            return pyo.Constraint.Skip
+
+    model.get_zone_center_distance = pyo.Constraint(
+        model.zones, pyo.RangeSet(clause_count := 8), rule=get_zone_center_distance)
+
 
 def set_objective(model: KitchenModel) -> None:
     def fitness(model: KitchenModel) -> Any:
         # prefer more present fixtures
         present_count = sum(model.present[fixture] for fixture in model.fixtures)
+
         # prefer larger total width
         width_coeff = sum(model.widths[segment] for segment in model.segments) / 10
+
         # prefer smaller width differences
         width_diff = sum(model.segments_width_diff[segment] for segment in model.segments) / -10
-        return present_count + width_coeff + width_diff
+
+        # prefer smaller zone distances
+        zone_dist = sum(model.fixtures_zone_x_dist[fixture] +
+                        model.fixtures_zone_y_dist[fixture] for fixture in model.fixtures) / -10
+
+        # minimize distance from optimal centers
+        center_dist = sum(model.zones_x_dist[zone] + model.zones_y_dist[zone] for zone in model.zones) / -10
+
+        return present_count + width_coeff + width_diff + zone_dist + center_dist
 
     model.fitness = pyo.Objective(rule=fitness, sense=pyo.maximize)
 

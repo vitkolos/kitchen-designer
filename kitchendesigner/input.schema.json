@@ -44,6 +44,25 @@
                 "required": ["type", "area", "attribute_name", "attribute_value"]
             }
         },
+        "zones": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "name": { "type": "string" },
+                    "is_optimized": { "type": "boolean" },
+                    "has_optimal_center": { "type": "boolean" },
+                    "optimal_center": {
+                        "type": "object",
+                        "properties": {
+                            "x": { "type": "number" },
+                            "y": { "type": "number" }
+                        }
+                    }
+                },
+                "required": ["name"]
+            }
+        },
         "available_fixtures": {
             "type": "array",
             "items": {

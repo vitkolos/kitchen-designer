@@ -84,10 +84,19 @@ class Rule:
     def __hash__(self) -> int:
         return id(self)
 
+
+@dataclass
+class Zone:
+    name: str
+    is_optimized: bool
+    optimal_center: tuple[float, float] | None
+
+
 @dataclass
 class Kitchen:
     groups: list[int]
     parts: list[KitchenPart]
     segments: list[Segment]
     rules: list[Rule]
+    zones: list[Zone]
     fixtures: list[Fixture]

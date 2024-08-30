@@ -30,6 +30,24 @@
     ],
     "rules": [
     ],
+    "zones": [
+        {
+            "name": "cleaning",
+            "is_optimized": true,
+            "has_optimal_center": true,
+            "optimal_center": {
+                "x": 40,
+                "y": 0
+            }
+        },
+        {
+            "name": "storage",
+            "is_optimized": true
+        },
+        {
+            "name": "cooking"
+        }
+    ],
     "available_fixtures": [
         {
             "name": "sink1",

@@ -8,18 +8,19 @@ from typing import Any
 
 def load() -> Kitchen:
     loaded_data = load_data_from_files()
-    fixtures = load_fictures(loaded_data['available_fixtures'])
+    zones = load_zones(loaded_data['zones'])
+    fixtures = load_fictures(loaded_data['available_fixtures'], [zone.name for zone in zones])
     parts, kitchen_segments = load_parts_segments(loaded_data['kitchen_parts'])
     rules = load_rules(loaded_data['rules'])
     preprocess_fixtures_and_rules(fixtures, rules)
     groups = list(set(part.position.group_number for part in parts))
-    return Kitchen(groups, parts, kitchen_segments, rules, fixtures)
+    return Kitchen(groups, parts, kitchen_segments, rules, zones, fixtures)
 
 
-def get_bool_field(fixture: dict[str, Any], key: str) -> Any:
+def get_bool_field(data_dict: dict[str, Any], key: str) -> Any:
     """helper function, default for bool field is false (if not present in JSON)"""
-    if key in fixture:
-        return fixture[key]
+    if key in data_dict:
+        return data_dict[key]
     else:
         return False
 
@@ -37,12 +38,29 @@ def load_data_from_files() -> Any:
     return loaded_data
 
 
-def load_fictures(available_fixtures_data: list[dict[str, Any]]) -> list[Fixture]:
+def load_zones(zones_data: list[dict[str, Any]]) -> list[Zone]:
+    zones = []
+
+    for zone_data in zones_data:
+        optimal_center = ((zone_data['optimal_center']['x'], zone_data['optimal_center']['y'])
+                          if get_bool_field(zone_data, 'has_optimal_center') else None)
+        zone = Zone(zone_data['name'], get_bool_field(zone_data, 'is_optimized'), optimal_center)
+        zones.append(zone)
+
+    return zones
+
+
+def load_fictures(available_fixtures_data: list[dict[str, Any]], zones_str: list[str]) -> list[Fixture]:
     fixtures = []
     multiple_fixture_copy_count = 3
 
     def create_kitchen_fixture(fixture_data: dict[str, Any], is_top: bool) -> Fixture:
-        fixture = Fixture(fixture_data['name'], fixture_data['type'], fixture_data['zone'], fixture_data['width_min'],
+        zone = fixture_data['zone']
+
+        if zone not in zones_str:
+            raise Exception(f'zone "{zone}" was not defined')
+
+        fixture = Fixture(fixture_data['name'], fixture_data['type'], zone, fixture_data['width_min'],
                           fixture_data['width_max'], is_top, get_bool_field(fixture_data, 'has_worktop'), get_bool_field(fixture_data, 'allow_edge'))
         return fixture
 
