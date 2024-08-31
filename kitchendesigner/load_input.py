@@ -4,6 +4,7 @@ import pathlib
 import math
 from kitchen import *
 from typing import Any
+import find_solution
 
 
 def load() -> Kitchen:
@@ -52,7 +53,7 @@ def load_zones(zones_data: list[dict[str, Any]]) -> list[Zone]:
 
 def load_fictures(available_fixtures_data: list[dict[str, Any]], zones_str: list[str]) -> list[Fixture]:
     fixtures = []
-    multiple_fixture_copy_count = 3
+    MULTIPLE_FIXTURE_COPY_COUNT = 3
 
     def create_kitchen_fixture(fixture_data: dict[str, Any], is_top: bool) -> Fixture:
         zone = fixture_data['zone']
@@ -71,7 +72,7 @@ def load_fictures(available_fixtures_data: list[dict[str, Any]], zones_str: list
         previous_fixture_bottom: Fixture | None
 
         if get_bool_field(fixture_data, 'allow_multiple'):
-            fixture_copy_count = multiple_fixture_copy_count
+            fixture_copy_count = MULTIPLE_FIXTURE_COPY_COUNT
         else:
             fixture_copy_count = 1
 
@@ -106,7 +107,6 @@ def load_fictures(available_fixtures_data: list[dict[str, Any]], zones_str: list
 
 
 def load_parts_segments(kitchen_parts_data: list[dict[str, Any]]) -> tuple[list[KitchenPart], list[Segment]]:
-    units_per_segment = 10
     segment: Segment | None = None
 
     parts = []
@@ -118,7 +118,7 @@ def load_parts_segments(kitchen_parts_data: list[dict[str, Any]]) -> tuple[list[
         is_top: bool = get_bool_field(part_data, 'is_top')
         edge_left: bool = get_bool_field(part_data, 'edge_left')
         edge_right: bool = get_bool_field(part_data, 'edge_right')
-        segment_count = math.ceil(width/units_per_segment)
+        segment_count = math.ceil(width/find_solution.min_fixture_width)
         part_segments: list[Segment] = []
         # TODO: check that the entire kitchen can fit in positive coordinates
         position = Position(part_data['position']['x'], part_data['position']['y'],

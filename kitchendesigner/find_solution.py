@@ -3,10 +3,11 @@ from typing import Any, Iterator
 import pyomo.environ as pyo
 import math
 
-min_fixture_width = 1
+min_fixture_width = 10
 max_fixture_width = 100
 max_canvas_size = 800
 max_segment_count = 100
+vertical_continuity_tolerance = 0.1
 
 
 def solve(kitchen: Kitchen) -> None:
@@ -34,6 +35,12 @@ class KitchenModel(pyo.ConcreteModel):  # type: ignore[misc]
         model.pairs = pyo.Var(model.segments, model.fixtures, domain=pyo.Binary)
         model.present_groups = pyo.Var(model.groups, model.fixtures, domain=pyo.Binary)
         model.rules_section_bin = pyo.Var(model.rules_section, model.fixtures, domain=pyo.Binary)
+        model.segment_begins_before = pyo.Var(model.segments, model.segments, domain=pyo.Binary, initialize=0)
+        model.segment_ends_after = pyo.Var(model.segments, model.segments, domain=pyo.Binary, initialize=0)
+        model.segment_intersects = pyo.Var(model.segments, model.segments, domain=pyo.Binary, initialize=0)
+        model.part_segment_begins_before = pyo.Var(model.parts, model.segments, domain=pyo.Binary, initialize=0)
+        model.part_segment_ends_after = pyo.Var(model.parts, model.segments, domain=pyo.Binary, initialize=0)
+        model.part_segment_intersects = pyo.Var(model.parts, model.segments, domain=pyo.Binary, initialize=0)
 
         # segment variables
         model.widths = pyo.Var(model.segments, domain=pyo.NonNegativeReals, bounds=(0, max_fixture_width))
@@ -54,17 +61,21 @@ class KitchenModel(pyo.ConcreteModel):  # type: ignore[misc]
             model.fixtures, domain=pyo.NonNegativeIntegers, bounds=(0, max_segment_count))
         model.zones_x_helper = pyo.Var(model.fixtures, domain=pyo.NonNegativeReals, bounds=(0, max_canvas_size))
         model.zones_y_helper = pyo.Var(model.fixtures, domain=pyo.NonNegativeReals, bounds=(0, max_canvas_size))
-        model.fixtures_zone_x_dist = pyo.Var(model.fixtures, domain=pyo.NonNegativeReals, bounds=(0, max_canvas_size), initialize=0)
+        model.fixtures_zone_x_dist = pyo.Var(model.fixtures, domain=pyo.NonNegativeReals,
+                                             bounds=(0, max_canvas_size), initialize=0)
         model.fixtures_zone_x_further = pyo.Var(model.fixtures, domain=pyo.Binary, initialize=0)
-        model.fixtures_zone_y_dist = pyo.Var(model.fixtures, domain=pyo.NonNegativeReals, bounds=(0, max_canvas_size), initialize=0)
+        model.fixtures_zone_y_dist = pyo.Var(model.fixtures, domain=pyo.NonNegativeReals,
+                                             bounds=(0, max_canvas_size), initialize=0)
         model.fixtures_zone_y_further = pyo.Var(model.fixtures, domain=pyo.Binary, initialize=0)
 
         # zone variables
         model.zones_x = pyo.Var(model.zones, domain=pyo.NonNegativeReals, bounds=(0, max_canvas_size))
         model.zones_y = pyo.Var(model.zones, domain=pyo.NonNegativeReals, bounds=(0, max_canvas_size))
-        model.zones_x_dist = pyo.Var(model.zones, domain=pyo.NonNegativeReals, bounds=(0, max_canvas_size), initialize=0)
+        model.zones_x_dist = pyo.Var(model.zones, domain=pyo.NonNegativeReals,
+                                     bounds=(0, max_canvas_size), initialize=0)
         model.zones_x_further = pyo.Var(model.zones, domain=pyo.Binary, initialize=0)
-        model.zones_y_dist = pyo.Var(model.zones, domain=pyo.NonNegativeReals, bounds=(0, max_canvas_size), initialize=0)
+        model.zones_y_dist = pyo.Var(model.zones, domain=pyo.NonNegativeReals,
+                                     bounds=(0, max_canvas_size), initialize=0)
         model.zones_y_further = pyo.Var(model.zones, domain=pyo.Binary, initialize=0)
 
 
@@ -506,6 +517,61 @@ def set_constraints(kitchen: Kitchen, model: KitchenModel) -> None:
     model.get_zone_center_distance = pyo.Constraint(
         model.zones, pyo.RangeSet(clause_count := 8), rule=get_zone_center_distance)
 
+    # VERTICAL CONTINUITY RULES
+    # for some reason, these constraints perform poorly on glpk
+
+    enable_continuity_constraints = False
+
+    def vertical_continuity_segments_beginning(model: KitchenModel, segment1: Segment, segment2: Segment, current_clause: int) -> Any:
+        """keeps a record of segments (segment1) which begin *in the middle* of the segment (segment2) above/below them \n
+        vertical continuity is broken <=> segment1.used & segment1.offset > segment2.offset & segment1.offset < segment2.offst + segment2.width"""
+        begins = model.segment_begins_before[segment1, segment2]
+        ends = model.segment_ends_after[segment1, segment2]
+        intersects = model.segment_intersects[segment1, segment2]
+        offset1 = model.segments_offset[segment1]
+        offset2 = model.segments_offset[segment2]
+        width2 = model.widths[segment2]
+        M = max_canvas_size
+
+        if segment1 is not segment2 and segment1.part.position.group_number == segment2.part.position.group_number:
+            return get_clause([
+                (0, - offset1 + (offset2 + vertical_continuity_tolerance) + M*begins, M),
+                (0, offset1 - (offset2 + width2 - vertical_continuity_tolerance) + M*ends, M),
+                (0, begins + ends + model.used[segment1] - 3*intersects, 2)
+            ], current_clause)
+        else:
+            return pyo.Constraint.Skip
+
+    if enable_continuity_constraints:
+        model.vertical_continuity_segments_beginning = pyo.Constraint(
+            model.segments, model.segments, pyo.RangeSet(clause_count := 3), rule=vertical_continuity_segments_beginning)
+
+    def vertical_continuity_part_ending(model: KitchenModel, part: KitchenPart, segment: Segment, current_clause: int) -> Any:
+        """notes that the part ending is situated in the middle of the segment above/below"""
+        begins = model.part_segment_begins_before[part, segment]
+        ends = model.part_segment_ends_after[part, segment]
+        intersects = model.part_segment_intersects[part, segment]
+        offset1 = sum(model.widths[s] for s in part.segments)
+        offset2 = model.segments_offset[segment]
+        width2 = model.widths[segment]
+        M = max_canvas_size
+
+        if part.position.group_number == segment.part.position.group_number:
+            return get_clause([
+                (0, - offset1 + (offset2 + vertical_continuity_tolerance) + M*begins, M),
+                (0, offset1 - (offset2 + width2 - vertical_continuity_tolerance) + M*ends, M),
+                (0, begins + ends - 2*intersects, 1)
+            ], current_clause)
+        else:
+            return pyo.Constraint.Skip
+
+    if enable_continuity_constraints:
+        model.vertical_continuity_part_ending = pyo.Constraint(
+            model.parts, model.segments, pyo.RangeSet(clause_count := 3), rule=vertical_continuity_part_ending)
+
+    # TODO: improve width pattern preference (AAA…, ABAB…), introduce piping/plumbing rule,
+    #       storage & worktop space, rational use of fixtures (one sink is enough)
+
 
 def set_objective(model: KitchenModel) -> None:
     def fitness(model: KitchenModel) -> Any:
@@ -525,13 +591,18 @@ def set_objective(model: KitchenModel) -> None:
         # minimize distance from optimal centers
         center_dist = sum(model.zones_x_dist[zone] + model.zones_y_dist[zone] for zone in model.zones) / -10
 
-        return present_count + width_coeff + width_diff + zone_dist + center_dist
+        # minimize vertical non-continuities
+        intersections = sum(model.segment_intersects[s, t] for s in model.segments for t in model.segments) / -5
+        intersections += sum(model.part_segment_intersects[p, s] for s in model.segments for p in model.parts) / -5
+
+        return present_count + width_coeff + width_diff + zone_dist + center_dist + intersections
 
     model.fitness = pyo.Objective(rule=fitness, sense=pyo.maximize)
 
 
 def find_model(model: KitchenModel) -> None:
-    opt = pyo.SolverFactory('glpk')
+    # opt = pyo.SolverFactory('glpk')
+    opt = pyo.SolverFactory('cbc')
     # opt = pyo.SolverFactory('gurobi_direct')
     result_obj = opt.solve(model, tee=True)
     model.pprint()
