@@ -28,6 +28,8 @@ def draw(kitchen: Kitchen) -> None:
                                       angle=angle, rotation_point=(rx, ry), fill=False, ec='red')
         ax.add_patch(rectangle)
 
+        x += part.position.padding
+
         for segment in part.segments:
             print(f"segment {segment.number}, fixture {segment.fixture}, width {segment.width}")
             # print(repr(segment))

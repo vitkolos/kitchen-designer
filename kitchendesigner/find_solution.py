@@ -8,6 +8,9 @@ max_fixture_width = 100
 max_canvas_size = 800
 max_segment_count = 100
 vertical_continuity_tolerance = 0.1
+width_same_tolerance = 1
+width_different_tolerance = 5
+width_penult_similar_tolerance = 2
 
 
 def solve(kitchen: Kitchen) -> None:
@@ -48,8 +51,16 @@ class KitchenModel(pyo.ConcreteModel):  # type: ignore[misc]
         model.segments_x = pyo.Var(model.segments, domain=pyo.NonNegativeReals, bounds=(0, max_canvas_size))
         model.segments_y = pyo.Var(model.segments, domain=pyo.NonNegativeReals, bounds=(0, max_canvas_size))
         model.segments_offset = pyo.Var(model.segments, domain=pyo.NonNegativeReals, bounds=(0, max_canvas_size))
-        model.segments_width_diff = pyo.Var(model.segments, domain=pyo.NonNegativeReals, bounds=(0, max_fixture_width))
+        model.segments_width_difference = pyo.Var(
+            model.segments, domain=pyo.NonNegativeReals, bounds=(0, max_fixture_width))
         model.segments_previous_larger = pyo.Var(model.segments, domain=pyo.Binary)
+        model.segments_width_not_same = pyo.Var(model.segments, domain=pyo.Binary)
+        model.segments_width_really_different = pyo.Var(model.segments, domain=pyo.Binary)
+        model.segments_penult_width_difference = pyo.Var(
+            model.segments, domain=pyo.NonNegativeReals, bounds=(0, max_fixture_width))
+        model.segments_penult_previous_larger = pyo.Var(model.segments, domain=pyo.Binary)
+        model.segments_penult_similar = pyo.Var(model.segments, domain=pyo.Binary)
+        model.segments_pattern_aba = pyo.Var(model.segments, domain=pyo.Binary)
 
         # fixture variables
         model.present = pyo.Var(model.fixtures, domain=pyo.Binary)
@@ -77,6 +88,10 @@ class KitchenModel(pyo.ConcreteModel):  # type: ignore[misc]
         model.zones_y_dist = pyo.Var(model.zones, domain=pyo.NonNegativeReals,
                                      bounds=(0, max_canvas_size), initialize=0)
         model.zones_y_further = pyo.Var(model.zones, domain=pyo.Binary, initialize=0)
+
+        # part variables
+        model.parts_padding = pyo.Var(model.parts, domain=pyo.NonNegativeReals,
+                                      bounds=(0, max_canvas_size), initialize=0)
 
 
 def set_constraints(kitchen: Kitchen, model: KitchenModel) -> None:
@@ -148,8 +163,8 @@ def set_constraints(kitchen: Kitchen, model: KitchenModel) -> None:
                                        pyo.RangeSet(clause_count := 2), rule=width_rules)
 
     def part_width(model: KitchenModel, part: KitchenPart) -> Any:
-        """total width of the kitchen part should be less then or equal to the sum of the widths of the fixtures"""
-        return sum(model.widths[segment] for segment in part.segments) <= part.width
+        """total width of the kitchen part should be less than or equal to the sum of the widths of the fixtures"""
+        return model.parts_padding[part] + sum(model.widths[segment] for segment in part.segments) <= part.width
 
     model.part_width = pyo.Constraint(model.parts, rule=part_width)
 
@@ -190,7 +205,9 @@ def set_constraints(kitchen: Kitchen, model: KitchenModel) -> None:
         cos_alpha = math.cos(math.radians(segment.part.position.angle))
 
         if segment.is_first:
-            return model.segments_x[segment] == segment.part.position.x + (model.widths[segment]/2) * cos_alpha - (segment.part.depth/2) * sin_alpha
+            horizontal = model.parts_padding[segment.part] + model.widths[segment]/2
+            vertical = segment.part.depth/2
+            return model.segments_x[segment] == segment.part.position.x + horizontal * cos_alpha - vertical * sin_alpha
         else:
             return model.segments_x[segment] == model.segments_x[segment.previous] + (model.widths[segment]/2 + model.widths[segment.previous]/2) * cos_alpha
 
@@ -202,7 +219,9 @@ def set_constraints(kitchen: Kitchen, model: KitchenModel) -> None:
         cos_alpha = math.cos(math.radians(segment.part.position.angle))
 
         if segment.is_first:
-            return model.segments_y[segment] == segment.part.position.y + (model.widths[segment]/2) * sin_alpha + (segment.part.depth/2) * cos_alpha
+            horizontal = model.parts_padding[segment.part] + model.widths[segment]/2
+            vertical = segment.part.depth/2
+            return model.segments_y[segment] == segment.part.position.y + horizontal * sin_alpha + vertical * cos_alpha
         else:
             return model.segments_y[segment] == model.segments_y[segment.previous] + (model.widths[segment]/2 + model.widths[segment.previous]/2) * sin_alpha
 
@@ -211,7 +230,7 @@ def set_constraints(kitchen: Kitchen, model: KitchenModel) -> None:
     def get_segments_offset(model: KitchenModel, segment: Segment) -> Any:
         """determines offset of the segment relative to the group"""
         if segment.is_first:
-            return model.segments_offset[segment] == segment.part.position.group_offset
+            return model.segments_offset[segment] == segment.part.position.group_offset + model.parts_padding[segment.part]
         else:
             return model.segments_offset[segment] == model.segments_offset[segment.previous] + model.widths[segment.previous]
 
@@ -360,7 +379,7 @@ def set_constraints(kitchen: Kitchen, model: KitchenModel) -> None:
 
     def get_width_difference(model: KitchenModel, segment: Segment, current_clause: int) -> Any:
         """detects width differences between neighbouring segments"""
-        width_difference = model.segments_width_diff[segment]
+        width_difference = model.segments_width_difference[segment]
 
         if segment.is_first:
             if current_clause == 1:
@@ -383,6 +402,33 @@ def set_constraints(kitchen: Kitchen, model: KitchenModel) -> None:
 
     model.get_width_difference = pyo.Constraint(
         model.segments, pyo.RangeSet(clause_count := 5), rule=get_width_difference)
+
+    def get_width_difference_penult(model: KitchenModel, segment: Segment, current_clause: int) -> Any:
+        """detects width differences between current and penultimate segment"""
+        width_difference = model.segments_penult_width_difference[segment]
+
+        if segment.is_first or segment.previous is None or segment.previous.is_first:
+            if current_clause == 1:
+                return width_difference <= 0
+            else:
+                return pyo.Constraint.Skip
+        else:
+            M = max_fixture_width
+            current_width = model.widths[segment]
+            previous_width = model.widths[segment.previous.previous]
+
+            clauses = [
+                width_difference >= previous_width - current_width - M*(1-model.used[segment]),
+                width_difference >= current_width - previous_width - M*(1-model.used[segment]),
+                width_difference <= previous_width - current_width + M *
+                (1-model.segments_penult_previous_larger[segment]),
+                width_difference <= current_width - previous_width + M*model.segments_penult_previous_larger[segment],
+                width_difference <= M*model.used[segment]
+            ]
+            return get_clause(clauses, current_clause)
+
+    model.get_width_difference_penult = pyo.Constraint(
+        model.segments, pyo.RangeSet(clause_count := 5), rule=get_width_difference_penult)
 
     # MULTIPLE SAME FIXTURES RULE
 
@@ -528,49 +574,102 @@ def set_constraints(kitchen: Kitchen, model: KitchenModel) -> None:
         begins = model.segment_begins_before[segment1, segment2]
         ends = model.segment_ends_after[segment1, segment2]
         intersects = model.segment_intersects[segment1, segment2]
-        offset1 = model.segments_offset[segment1]
-        offset2 = model.segments_offset[segment2]
+        # the approach below seems to be more effective (in CBC) than using model.segments_offset[segmentX] directly
+        offset1 = segment1.part.position.group_offset + model.parts_padding[segment1.part] + \
+            sum(model.widths[s] for s in segment1.part.segments if s.number < segment1.number)
+        offset2 = segment2.part.position.group_offset + model.parts_padding[segment2.part] + \
+            sum(model.widths[s] for s in segment2.part.segments if s.number < segment2.number)
         width2 = model.widths[segment2]
         M = max_canvas_size
 
-        if segment1 is not segment2 and segment1.part.position.group_number == segment2.part.position.group_number:
+        if segment1 is not segment2 and segment1.part is not segment2.part and segment1.part.position.group_number == segment2.part.position.group_number:
             return get_clause([
                 (0, - offset1 + (offset2 + vertical_continuity_tolerance) + M*begins, M),
                 (0, offset1 - (offset2 + width2 - vertical_continuity_tolerance) + M*ends, M),
-                (0, begins + ends + model.used[segment1] - 3*intersects, 2)
+                (0, begins + ends + model.used[segment1] - 3*intersects, 2),
+                # in CBC, the clauses below make it faster (but when all four are active, it becomes slower)
+                # model.segment_begins_before[segment1, segment2.previous] >= model.segment_begins_before[segment1, segment2] if not segment2.is_first else pyo.Constraint.Skip,
+                model.segment_begins_before[segment1.previous, segment2]
+                <= model.segment_begins_before[segment1, segment2] if not segment1.is_first else pyo.Constraint.Skip,
+                model.segment_ends_after[segment1, segment2.previous]
+                <= model.segment_ends_after[segment1, segment2] if not segment2.is_first else pyo.Constraint.Skip,
+                model.segment_ends_after[segment1.previous, segment2]
+                >= model.segment_ends_after[segment1, segment2] if not segment1.is_first else pyo.Constraint.Skip,
             ], current_clause)
         else:
             return pyo.Constraint.Skip
 
     if enable_continuity_constraints:
         model.vertical_continuity_segments_beginning = pyo.Constraint(
-            model.segments, model.segments, pyo.RangeSet(clause_count := 3), rule=vertical_continuity_segments_beginning)
+            model.segments, model.segments, pyo.RangeSet(clause_count := 6), rule=vertical_continuity_segments_beginning)
 
     def vertical_continuity_part_ending(model: KitchenModel, part: KitchenPart, segment: Segment, current_clause: int) -> Any:
         """notes that the part ending is situated in the middle of the segment above/below"""
         begins = model.part_segment_begins_before[part, segment]
         ends = model.part_segment_ends_after[part, segment]
         intersects = model.part_segment_intersects[part, segment]
-        offset1 = sum(model.widths[s] for s in part.segments)
-        offset2 = model.segments_offset[segment]
+        offset1 = part.position.group_offset + model.parts_padding[part] + sum(model.widths[s] for s in part.segments)
+        offset2 = segment.part.position.group_offset + model.parts_padding[segment.part] + \
+            sum(model.widths[s] for s in segment.part.segments if s.number < segment.number)
         width2 = model.widths[segment]
         M = max_canvas_size
 
-        if part.position.group_number == segment.part.position.group_number:
+        if part is not segment.part and part.position.group_number == segment.part.position.group_number:
             return get_clause([
                 (0, - offset1 + (offset2 + vertical_continuity_tolerance) + M*begins, M),
                 (0, offset1 - (offset2 + width2 - vertical_continuity_tolerance) + M*ends, M),
-                (0, begins + ends - 2*intersects, 1)
+                (0, begins + ends - 2*intersects, 1),
+                model.part_segment_begins_before[part, segment.previous]
+                >= model.part_segment_begins_before[part, segment] if not segment.is_first else pyo.Constraint.Skip,
+                model.part_segment_ends_after[part, segment.previous]
+                <= model.part_segment_ends_after[part, segment] if not segment.is_first else pyo.Constraint.Skip
             ], current_clause)
         else:
             return pyo.Constraint.Skip
 
     if enable_continuity_constraints:
         model.vertical_continuity_part_ending = pyo.Constraint(
-            model.parts, model.segments, pyo.RangeSet(clause_count := 3), rule=vertical_continuity_part_ending)
+            model.parts, model.segments, pyo.RangeSet(clause_count := 5), rule=vertical_continuity_part_ending)
 
-    # TODO: improve width pattern preference (AAA…, ABAB…), introduce piping/plumbing rule,
-    #       storage & worktop space, rational use of fixtures (one sink is enough)
+    # WIDTH PATTERN RULES
+
+    def is_previous_width_not_same(model: KitchenModel, segment: Segment) -> Any:
+        """does the previous segment have almost the same width as the current segment? (we use negation here) \n
+        segments_width_not_same <=> (segments_width_difference >= width_same_tolerance)"""
+        M = max_fixture_width
+        return (0, width_same_tolerance - model.segments_width_difference[segment] + M * model.segments_width_not_same[segment], M)
+
+    model.is_previous_width_not_same = pyo.Constraint(model.segments, rule=is_previous_width_not_same)
+
+    def is_previous_width_different(model: KitchenModel, segment: Segment) -> Any:
+        """does the previous segment have different width than the current segment? \n
+        segments_width_really_different <=> (segments_width_difference >= width_different_tolerance)"""
+        M = max_fixture_width
+        return (0, width_different_tolerance - model.segments_width_difference[segment] + M * model.segments_width_really_different[segment], M)
+
+    model.is_previous_width_different = pyo.Constraint(model.segments, rule=is_previous_width_different)
+
+    def different_implies_not_same(model: KitchenModel, segment: Segment) -> Any:
+        return model.segments_width_really_different[segment] <= model.segments_width_not_same[segment]
+
+    model.different_implies_not_same = pyo.Constraint(model.segments, rule=different_implies_not_same)
+
+    def is_penultimate_width_similar(model: KitchenModel, segment: Segment) -> Any:
+        """segments_penult_similar <=> (segments_penult_width_difference <= width_penult_similar_tolerance)"""
+        M = max_fixture_width
+        return (0, model.segments_penult_width_difference[segment] - width_penult_similar_tolerance + M * model.segments_penult_similar[segment], M)
+
+    model.is_penultimate_width_similar = pyo.Constraint(model.segments, rule=is_penultimate_width_similar)
+
+    def is_aba_pattern(model: KitchenModel, segment: Segment) -> Any:
+        if segment.is_first or segment.previous is None or segment.previous.is_first:
+            return model.segments_pattern_aba[segment] <= 0
+        else:
+            return (0, model.segments_width_really_different[segment] + model.segments_penult_similar[segment] - 2*model.segments_pattern_aba[segment], 1)
+
+    model.is_aba_pattern = pyo.Constraint(model.segments, rule=is_aba_pattern)
+
+    # TODO: piping/plumbing rule, storage & worktop space, rational use of fixtures (one sink is enough)
 
 
 def set_objective(model: KitchenModel) -> None:
@@ -579,10 +678,12 @@ def set_objective(model: KitchenModel) -> None:
         present_count = sum(model.present[fixture] for fixture in model.fixtures)
 
         # prefer larger total width
-        width_coeff = sum(model.widths[segment] for segment in model.segments) / 10
+        width_coeff = (sum(model.widths[segment] for segment in model.segments) -
+                       sum(part.width for part in model.parts)) / 2
 
-        # prefer smaller width differences
-        width_diff = sum(model.segments_width_diff[segment] for segment in model.segments) / -10
+        # penalize width differences
+        width_patterns = sum(model.segments_width_not_same[segment] for segment in model.segments) * -1
+        width_patterns += sum(model.segments_pattern_aba[segment] for segment in model.segments)
 
         # prefer smaller zone distances
         zone_dist = sum(model.fixtures_zone_x_dist[fixture] +
@@ -595,20 +696,23 @@ def set_objective(model: KitchenModel) -> None:
         intersections = sum(model.segment_intersects[s, t] for s in model.segments for t in model.segments) / -5
         intersections += sum(model.part_segment_intersects[p, s] for s in model.segments for p in model.parts) / -5
 
-        return present_count + width_coeff + width_diff + zone_dist + center_dist + intersections
+        return present_count + width_coeff + width_patterns + zone_dist + center_dist + intersections
 
     model.fitness = pyo.Objective(rule=fitness, sense=pyo.maximize)
 
 
 def find_model(model: KitchenModel) -> None:
-    # opt = pyo.SolverFactory('glpk')
-    opt = pyo.SolverFactory('cbc')
+    opt = pyo.SolverFactory('glpk')
+    # opt = pyo.SolverFactory('cbc')
     # opt = pyo.SolverFactory('gurobi_direct')
     result_obj = opt.solve(model, tee=True)
     model.pprint()
 
 
 def save_result(kitchen: Kitchen, model: KitchenModel) -> None:
+    for part in kitchen.parts:
+        part.position.padding = pyo.value(model.parts_padding[part])
+
     for segment in kitchen.segments:
         segment.width = pyo.value(model.widths[segment], exception=False)
 

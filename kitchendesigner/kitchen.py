@@ -28,8 +28,8 @@ class Fixture:
 class Segment:
     number: int
     part: KitchenPart
-    width: float
-    fixture: Fixture | None
+    width: float  # <- solution
+    fixture: Fixture | None  # <- solution
     is_first: bool
     is_last: bool
     previous: Segment | None = field(repr=False)
@@ -48,6 +48,7 @@ class Position:
     angle: float
     group_number: int
     group_offset: float
+    padding: float = 0  # <- solution
 
 
 @dataclass
