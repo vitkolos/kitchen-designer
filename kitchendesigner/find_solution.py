@@ -1,5 +1,5 @@
 from kitchen import *
-from typing import Any
+from typing import Any, Iterable
 import pyomo.environ as pyo
 import math
 
@@ -26,13 +26,14 @@ class KitchenModel(pyo.ConcreteModel):  # type: ignore[misc]
         super().__init__()
 
         # sets
-        model.fixtures = pyo.Set(initialize=kitchen.fixtures)
-        model.segments = pyo.Set(initialize=kitchen.segments)
-        model.parts = pyo.Set(initialize=kitchen.parts)
-        model.groups = pyo.Set(initialize=kitchen.groups)
-        model.rules_all = pyo.Set(initialize=kitchen.rules)
-        model.rules_section = pyo.Set(initialize=model.rules_all, filter=lambda _, rule: rule.area == 'group_section')
-        model.zones = pyo.Set(initialize=[zone.name for zone in kitchen.zones if zone.is_optimized])
+        model.fixtures: Iterable[Fixture] = pyo.Set(initialize=kitchen.fixtures)
+        model.segments: Iterable[Segment] = pyo.Set(initialize=kitchen.segments)
+        model.parts: Iterable[KitchenPart] = pyo.Set(initialize=kitchen.parts)
+        model.groups: Iterable[int] = pyo.Set(initialize=kitchen.groups)
+        model.rules_all: Iterable[Rule] = pyo.Set(initialize=kitchen.rules)
+        model.rules_section: Iterable[Rule] = pyo.Set(
+            initialize=model.rules_all, filter=lambda _, rule: rule.area == 'group_section')
+        model.zones: Iterable[str] = pyo.Set(initialize=[zone.name for zone in kitchen.zones if zone.is_optimized])
 
         # product variables
         model.pairs = pyo.Var(model.segments, model.fixtures, domain=pyo.Binary)
@@ -718,7 +719,7 @@ def set_constraints(kitchen: Kitchen, model: KitchenModel) -> None:
 
     model.is_aba_pattern = pyo.Constraint(model.segments, rule=is_aba_pattern)
 
-    # TODO: piping/plumbing rule, storage & worktop space, rational use of fixtures (one sink is enough)
+    # TODO: storage & worktop space, rational use of fixtures (one sink is enough)
 
 
 def set_objective(model: KitchenModel) -> None:
@@ -745,11 +746,18 @@ def set_objective(model: KitchenModel) -> None:
         # minimize distance from optimal centers
         center_dist = sum(model.zones_x_dist[zone] + model.zones_y_dist[zone] for zone in model.zones) / -10
 
+        # maximize storage
+        storage = sum(model.present[fixture] * fixture.storage for fixture in model.fixtures) / 5
+
+        # maximize worktop
+        worktop = sum(model.present[fixture] * int(fixture.has_worktop) for fixture in model.fixtures) / 5
+
         # minimize vertical non-continuities
         intersections = sum(model.segment_intersects[s, t] for s in model.segments for t in model.segments) / -5
         intersections += sum(model.part_segment_intersects[p, s] for s in model.segments for p in model.parts) / -5
 
-        return present_count + width_coeff + width_patterns + target_dist + zone_dist + center_dist + intersections
+        return (present_count + width_coeff + width_patterns + target_dist + zone_dist + center_dist + storage + worktop
+                + intersections)
 
     model.fitness = pyo.Objective(rule=fitness, sense=pyo.maximize)
 

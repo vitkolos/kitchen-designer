@@ -87,6 +87,7 @@
                     "position_bottom": { "type": "boolean" },
                     "width_min": { "type": "number" },
                     "width_max": { "type": "number" },
+                    "storage": { "type": "number" },
                     "has_worktop": { "type": "boolean" },
                     "allow_edge": { "type": "boolean" },
                     "allow_multiple": { "type": "boolean" }

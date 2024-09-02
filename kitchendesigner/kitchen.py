@@ -10,6 +10,7 @@ class Fixture:
     width_min: float
     width_max: float
     is_top: bool
+    storage: float
     has_worktop: bool
     allow_edge: bool
     complementary_fixture: Fixture | None = None

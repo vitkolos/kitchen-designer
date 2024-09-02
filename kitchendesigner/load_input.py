@@ -62,8 +62,9 @@ def load_fictures(available_fixtures_data: list[dict[str, Any]], zones_str: list
         if zone not in zones_str:
             raise Exception(f'zone "{zone}" was not defined')
 
+        storage = fixture_data['storage'] if 'storage' in fixture_data else 0
         fixture = Fixture(fixture_data['name'], fixture_data['type'], zone, fixture_data['width_min'],
-                          fixture_data['width_max'], is_top, get_bool_field(fixture_data, 'has_worktop'), get_bool_field(fixture_data, 'allow_edge'))
+                          fixture_data['width_max'], is_top, storage, get_bool_field(fixture_data, 'has_worktop'), get_bool_field(fixture_data, 'allow_edge'))
         return fixture
 
     for fixture_data in available_fixtures_data:
@@ -93,6 +94,7 @@ def load_fictures(available_fixtures_data: list[dict[str, Any]], zones_str: list
                 kitchen_fixture_bottom.name += 'B'
                 kitchen_fixture_top.complementary_fixture = kitchen_fixture_bottom
                 kitchen_fixture_bottom.complementary_fixture = kitchen_fixture_top
+                kitchen_fixture_top.storage = 0
 
             previous_fixture_top = kitchen_fixture_top
             previous_fixture_bottom = kitchen_fixture_bottom
