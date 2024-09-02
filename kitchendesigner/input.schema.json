@@ -44,6 +44,18 @@
                 "required": ["type", "area", "attribute_name", "attribute_value"]
             }
         },
+        "targets": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "fixture_type": { "type": "string" },
+                    "x": { "type": "number" },
+                    "y": { "type": "number" }
+                },
+                "required": ["fixture_type", "x", "y"]
+            }
+        },
         "zones": {
             "type": "array",
             "items": {

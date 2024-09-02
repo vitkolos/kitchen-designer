@@ -87,6 +87,13 @@ class Rule:
 
 
 @dataclass
+class Target:
+    fixture_type: str
+    x: float
+    y: float
+
+
+@dataclass
 class Zone:
     name: str
     is_optimized: bool
@@ -99,5 +106,6 @@ class Kitchen:
     parts: list[KitchenPart]
     segments: list[Segment]
     rules: list[Rule]
+    targets: dict[str, Target]
     zones: list[Zone]
     fixtures: list[Fixture]

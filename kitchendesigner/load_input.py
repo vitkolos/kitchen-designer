@@ -13,9 +13,10 @@ def load() -> Kitchen:
     fixtures = load_fictures(loaded_data['available_fixtures'], [zone.name for zone in zones])
     parts, kitchen_segments = load_parts_segments(loaded_data['kitchen_parts'])
     rules = load_rules(loaded_data['rules'])
+    targets = load_targets(loaded_data['targets'])
     preprocess_fixtures_and_rules(fixtures, rules)
     groups = list(set(part.position.group_number for part in parts))
-    return Kitchen(groups, parts, kitchen_segments, rules, zones, fixtures)
+    return Kitchen(groups, parts, kitchen_segments, rules, targets, zones, fixtures)
 
 
 def get_bool_field(data_dict: dict[str, Any], key: str) -> Any:
@@ -153,6 +154,17 @@ def load_rules(rules_data: list[dict[str, Any]]) -> list[Rule]:
         rules.append(rule)
 
     return rules
+
+
+def load_targets(targets_data: list[dict[str, Any]]) -> dict[str, Target]:
+    targets = {}
+
+    for target_data in targets_data:
+        fixture_type = target_data['fixture_type']
+        target = Target(fixture_type, target_data['x'], target_data['y'])
+        targets[fixture_type] = target
+
+    return targets
 
 
 def preprocess_fixtures_and_rules(fixtures: list[Fixture], rules: list[Rule]) -> None:

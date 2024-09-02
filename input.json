@@ -29,6 +29,19 @@
         }
     ],
     "rules": [
+        {
+            "type": "include",
+            "area": "kitchen",
+            "attribute_name": "type",
+            "attribute_value": "sink"
+        }
+    ],
+    "targets": [
+        {
+            "fixture_type": "sink",
+            "x": 32,
+            "y": 12
+        }
     ],
     "zones": [
         {

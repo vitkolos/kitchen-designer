@@ -78,6 +78,12 @@ class KitchenModel(pyo.ConcreteModel):  # type: ignore[misc]
         model.fixtures_zone_y_dist = pyo.Var(model.fixtures, domain=pyo.NonNegativeReals,
                                              bounds=(0, max_canvas_size), initialize=0)
         model.fixtures_zone_y_further = pyo.Var(model.fixtures, domain=pyo.Binary, initialize=0)
+        model.fixtures_target_x_dist = pyo.Var(model.fixtures, domain=pyo.NonNegativeReals,
+                                               bounds=(0, max_canvas_size), initialize=0)
+        model.fixtures_target_x_further = pyo.Var(model.fixtures, domain=pyo.Binary, initialize=0)
+        model.fixtures_target_y_dist = pyo.Var(model.fixtures, domain=pyo.NonNegativeReals,
+                                               bounds=(0, max_canvas_size), initialize=0)
+        model.fixtures_target_y_further = pyo.Var(model.fixtures, domain=pyo.Binary, initialize=0)
 
         # zone variables
         model.zones_x = pyo.Var(model.zones, domain=pyo.NonNegativeReals, bounds=(0, max_canvas_size))
@@ -563,6 +569,48 @@ def set_constraints(kitchen: Kitchen, model: KitchenModel) -> None:
     model.get_zone_center_distance = pyo.Constraint(
         model.zones, pyo.RangeSet(clause_count := 8), rule=get_zone_center_distance)
 
+    # TARGET RULES
+
+    def get_fixture_target_distance(model: KitchenModel, fixture: Fixture, current_clause: int) -> Any:
+        """calculates the distance each fixture has from the target (plumbing etc.)"""
+        p = model.present[fixture]
+        M = max_canvas_size
+
+        x_dist = model.fixtures_target_x_dist[fixture]
+        x_further = model.fixtures_target_x_further[fixture]
+        y_dist = model.fixtures_target_y_dist[fixture]
+        y_further = model.fixtures_target_y_further[fixture]
+
+        if fixture.type in kitchen.targets:
+            fixture_x = model.fixtures_x[fixture]
+            target_x = kitchen.targets[fixture.type].x
+            fixture_y = model.fixtures_y[fixture]
+            target_y = kitchen.targets[fixture.type].y
+
+            clauses = [
+                x_dist >= target_x - fixture_x - M*(1-p),
+                x_dist >= fixture_x - target_x - M*(1-p),
+                x_dist <= target_x - fixture_x + M*x_further,
+                x_dist <= fixture_x - target_x + M*(1-x_further),
+                x_dist <= M*p,
+
+                y_dist >= target_y - fixture_y - M*(1-p),
+                y_dist >= fixture_y - target_y - M*(1-p),
+                y_dist <= target_y - fixture_y + M*y_further,
+                y_dist <= fixture_y - target_y + M*(1-y_further),
+                y_dist <= M*p,
+            ]
+            return get_clause(clauses, current_clause)
+        elif current_clause == 1:
+            return x_dist <= 0
+        elif current_clause == 2:
+            return y_dist <= 0
+        else:
+            return pyo.Constraint.Skip
+
+    model.get_fixture_target_distance = pyo.Constraint(
+        model.fixtures, pyo.RangeSet(clause_count := 10), rule=get_fixture_target_distance)
+
     # VERTICAL CONTINUITY RULES
     # for some reason, these constraints perform poorly on glpk
 
@@ -686,9 +734,13 @@ def set_objective(model: KitchenModel) -> None:
         width_patterns = sum(model.segments_width_not_same[segment] for segment in model.segments) * -1
         width_patterns += sum(model.segments_pattern_aba[segment] for segment in model.segments)
 
-        # prefer smaller zone distances
+        # minimize zone distances
         zone_dist = sum(model.fixtures_zone_x_dist[fixture] +
                         model.fixtures_zone_y_dist[fixture] for fixture in model.fixtures) / -10
+
+        # minimize target distances
+        target_dist = sum(model.fixtures_target_x_dist[fixture] +
+                          model.fixtures_target_y_dist[fixture] for fixture in model.fixtures) / -10
 
         # minimize distance from optimal centers
         center_dist = sum(model.zones_x_dist[zone] + model.zones_y_dist[zone] for zone in model.zones) / -10
@@ -697,7 +749,7 @@ def set_objective(model: KitchenModel) -> None:
         intersections = sum(model.segment_intersects[s, t] for s in model.segments for t in model.segments) / -5
         intersections += sum(model.part_segment_intersects[p, s] for s in model.segments for p in model.parts) / -5
 
-        return present_count + width_coeff + width_patterns + zone_dist + center_dist + intersections
+        return present_count + width_coeff + width_patterns + target_dist + zone_dist + center_dist + intersections
 
     model.fitness = pyo.Objective(rule=fitness, sense=pyo.maximize)
 
