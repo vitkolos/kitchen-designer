@@ -1,5 +1,5 @@
 from kitchen import *
-from typing import Any, Iterator
+from typing import Any
 import pyomo.environ as pyo
 import math
 
@@ -27,7 +27,7 @@ class KitchenModel(pyo.ConcreteModel):  # type: ignore[misc]
 
         # sets
         model.fixtures = pyo.Set(initialize=kitchen.fixtures)
-        model.segments: Iterator[Segment] = pyo.Set(initialize=kitchen.segments)
+        model.segments = pyo.Set(initialize=kitchen.segments)
         model.parts = pyo.Set(initialize=kitchen.parts)
         model.groups = pyo.Set(initialize=kitchen.groups)
         model.rules_all = pyo.Set(initialize=kitchen.rules)
@@ -566,7 +566,7 @@ def set_constraints(kitchen: Kitchen, model: KitchenModel) -> None:
     # VERTICAL CONTINUITY RULES
     # for some reason, these constraints perform poorly on glpk
 
-    enable_continuity_constraints = False
+    enable_continuity_constraints = True
 
     def vertical_continuity_segments_beginning(model: KitchenModel, segment1: Segment, segment2: Segment, current_clause: int) -> Any:
         """keeps a record of segments (segment1) which begin *in the middle* of the segment (segment2) above/below them \n
@@ -662,10 +662,11 @@ def set_constraints(kitchen: Kitchen, model: KitchenModel) -> None:
     model.is_penultimate_width_similar = pyo.Constraint(model.segments, rule=is_penultimate_width_similar)
 
     def is_aba_pattern(model: KitchenModel, segment: Segment) -> Any:
+        """segments form ABA pattern <=> the A segments have similar width & the B segment has distinct width"""
         if segment.is_first or segment.previous is None or segment.previous.is_first:
             return model.segments_pattern_aba[segment] <= 0
         else:
-            return (0, model.segments_width_really_different[segment] + model.segments_penult_similar[segment] - 2*model.segments_pattern_aba[segment], 1)
+            return (0, model.segments_penult_similar[segment] + model.segments_width_really_different[segment] - 2*model.segments_pattern_aba[segment], 1)
 
     model.is_aba_pattern = pyo.Constraint(model.segments, rule=is_aba_pattern)
 
@@ -702,9 +703,9 @@ def set_objective(model: KitchenModel) -> None:
 
 
 def find_model(model: KitchenModel) -> None:
-    opt = pyo.SolverFactory('glpk')
+    # opt = pyo.SolverFactory('glpk')
     # opt = pyo.SolverFactory('cbc')
-    # opt = pyo.SolverFactory('gurobi_direct')
+    opt = pyo.SolverFactory('gurobi_direct')
     result_obj = opt.solve(model, tee=True)
     model.pprint()
 

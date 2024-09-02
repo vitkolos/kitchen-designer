@@ -2,6 +2,7 @@ attrs==24.2.0
 contourpy==1.2.1
 cycler==0.12.1
 fonttools==4.53.1
+gurobipy==11.0.3
 jsonschema==4.23.0
 jsonschema-specifications==2023.12.1
 kiwisolver==1.4.5
@@ -12,7 +13,7 @@ numpy==2.1.0
 packaging==24.1
 pillow==10.4.0
 ply==3.11
-Pyomo==6.7.2
+Pyomo==6.8.0
 pyparsing==3.1.4
 python-dateutil==2.9.0.post0
 referencing==0.35.1
