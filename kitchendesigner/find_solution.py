@@ -53,6 +53,9 @@ class KitchenModel(pyo.ConcreteModel):  # type: ignore[misc]
         model.segments_x = pyo.Var(model.segments, domain=pyo.NonNegativeReals, bounds=(0, max_canvas_size))
         model.segments_y = pyo.Var(model.segments, domain=pyo.NonNegativeReals, bounds=(0, max_canvas_size))
         model.segments_offset = pyo.Var(model.segments, domain=pyo.NonNegativeReals, bounds=(0, max_canvas_size))
+        model.segments_continuous_worktop_left = pyo.Var(
+            model.segments, domain=pyo.NonNegativeReals, bounds=(0, max_canvas_size))
+        model.segments_continuous_worktop_left_max = pyo.Var(model.segments, domain=pyo.Binary, initialize=0)
         model.segments_width_difference = pyo.Var(
             model.segments, domain=pyo.NonNegativeReals, bounds=(0, max_fixture_width))
         model.segments_previous_larger = pyo.Var(model.segments, domain=pyo.Binary)
@@ -101,6 +104,9 @@ class KitchenModel(pyo.ConcreteModel):  # type: ignore[misc]
         # part variables
         model.parts_padding = pyo.Var(model.parts, domain=pyo.NonNegativeReals,
                                       bounds=(0, max_canvas_size), initialize=0)
+
+        # individual variables
+        model.widest_worktop = pyo.Var(domain=pyo.NonNegativeReals, bounds=(0, max_canvas_size))
 
 
 def set_constraints(kitchen: Kitchen, model: KitchenModel) -> None:
@@ -771,6 +777,44 @@ def set_constraints(kitchen: Kitchen, model: KitchenModel) -> None:
     model.wall_distance = pyo.Constraint(model.groups, model.fixtures,
                                          pyo.RangeSet(clause_count := 2), rule=wall_distance)
 
+    # WORKTOP RULES
+
+    def worktop_left_unused_segments(model: KitchenModel, segment: Segment) -> Any:
+        return model.segments_continuous_worktop_left[segment] <= max_canvas_size * model.used[segment]
+
+    model.worktop_left_unused_segments = pyo.Constraint(model.segments, rule=worktop_left_unused_segments)
+
+    def worktop_left_fixtures(model: KitchenModel, segment: Segment, fixture: Fixture, current_clause: int) -> Any:
+        ww = model.segments_continuous_worktop_left[segment]
+
+        if fixture.has_worktop:
+            previous = 0 if segment.is_first or segment.previous is None else model.segments_continuous_worktop_left[
+                segment.previous]
+            return get_clause([
+                previous + model.widths[segment] <= ww + (1-model.pairs[segment, fixture])*max_canvas_size,
+                ww <= previous + model.widths[segment] + (1-model.pairs[segment, fixture])*max_canvas_size
+            ], current_clause)
+        else:
+            return get_clause([
+                ww <= (1-model.pairs[segment, fixture])*max_canvas_size,
+                pyo.Constraint.Skip
+            ], current_clause)
+
+    model.worktop_left_fixtures = pyo.Constraint(
+        model.segments, model.fixtures, pyo.RangeSet(clause_count := 2), rule=worktop_left_fixtures)
+
+    def worktop_max_segments(model: KitchenModel, segment: Segment, current_clause: int) -> Any:
+        M = max_canvas_size
+        return get_clause([
+            model.segments_continuous_worktop_left[segment] <= model.widest_worktop,
+            model.widest_worktop <= model.segments_continuous_worktop_left[segment] + (
+                1-model.segments_continuous_worktop_left_max[segment])*M
+        ], current_clause)
+
+    model.worktop_max_segments = pyo.Constraint(
+        model.segments, pyo.RangeSet(clause_count := 2), rule=worktop_max_segments)
+    model.worktop_best_segment = pyo.Constraint(expr=sum(model.segments_continuous_worktop_left_max[s] for s in model.segments) >= 1)
+
 
 def set_objective(model: KitchenModel) -> None:
     def fitness(model: KitchenModel) -> Any:
@@ -800,7 +844,8 @@ def set_objective(model: KitchenModel) -> None:
         storage = sum(model.present[fixture] * fixture.storage for fixture in model.fixtures) / 5
 
         # maximize worktop
-        worktop = sum(model.present[fixture] * int(fixture.has_worktop) for fixture in model.fixtures) / 5
+        worktop = sum(model.present[fixture] * int(fixture.has_worktop) for fixture in model.fixtures) / 10
+        worktop += model.widest_worktop / 10
 
         # minimize vertical non-continuities
         intersections = sum(model.segment_intersects[s, t] for s in model.segments for t in model.segments) / -5

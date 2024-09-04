@@ -103,7 +103,7 @@
             "width_min": 10,
             "width_max": 12,
             "storage": 0.3,
-            "has_worktop": false,
+            "has_worktop": true,
             "allow_edge": false
         },
         {
