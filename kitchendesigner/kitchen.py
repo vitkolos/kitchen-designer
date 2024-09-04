@@ -94,6 +94,7 @@ class RelationRules:
     min_distances: dict[tuple[str, str], float]
     wall_distances: dict[str, float]
     min_worktops: dict[str, float]
+    one_wide: dict[str, float]
 
 
 @dataclass

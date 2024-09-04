@@ -28,29 +28,11 @@
             "edge_left": true
         }
     ],
-    "walls": [
-        {
-            "group": 1,
-            "left": 0,
-            "right": 60
-        }
-    ],
-    "placement_rules": [
-        {
-            "rule_type": "include",
-            "area": "group_section",
-            "attribute_name": "type",
-            "attribute_value": "sink",
-            "group": 1,
-            "section_offset": 40,
-            "section_width": 20
-        }
-    ],
     "relation_rules": [
         {
-            "rule_type": "min_worktop",
-            "fixture_type": "sink",
-            "length": 10
+            "rule_type": "one_wide",
+            "fixture_type": "cupboard",
+            "length": 19
         }
     ],
     "zones": [

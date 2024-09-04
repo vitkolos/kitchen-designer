@@ -61,7 +61,7 @@
             "items": {
                 "type": "object",
                 "properties": {
-                    "rule_type": { "enum": ["target", "min_distance", "wall_distance", "min_worktop"] },
+                    "rule_type": { "enum": ["target", "min_distance", "wall_distance", "min_worktop", "one_wide"] },
                     "fixture_type": { "type": "string" },
                     "fixture_type2": { "type": "string" },
                     "length": { "type": "number" },

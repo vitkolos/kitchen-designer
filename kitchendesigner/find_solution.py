@@ -93,6 +93,7 @@ class KitchenModel(pyo.ConcreteModel):  # type: ignore[misc]
                                                bounds=(0, max_canvas_size), initialize=0)
         model.fixtures_target_y_further = pyo.Var(model.fixtures, domain=pyo.Binary, initialize=0)
         model.fixtures_close_to_wall = pyo.Var(model.fixtures, domain=pyo.Binary, initialize=0)
+        model.fixtures_wide_enough = pyo.Var(model.fixtures, domain=pyo.Binary, initialize=0)
 
         # zone variables
         model.zones_x = pyo.Var(model.zones, domain=pyo.NonNegativeReals, bounds=(0, max_canvas_size))
@@ -845,6 +846,23 @@ def set_constraints(kitchen: Kitchen, model: KitchenModel) -> None:
 
     model.worktop_required = pyo.Constraint(model.segments, model.fixtures,
                                             pyo.RangeSet(clause_count := 2), rule=worktop_required)
+
+    # ONE WIDE RULES
+
+    def is_wide_enough(model: KitchenModel, fixture: Fixture) -> Any:
+        if fixture.type in kitchen.relation_rules.one_wide:
+            required_width = kitchen.relation_rules.one_wide[fixture.type]
+            M = max_fixture_width
+            return (0, required_width - model.fixtures_width[fixture] + M * model.fixtures_wide_enough[fixture], M)
+        else:
+            return pyo.Constraint.Skip
+
+    model.is_wide_enough = pyo.Constraint(model.fixtures, rule=is_wide_enough)
+
+    def at_least_one_wide(model: KitchenModel, fixture_type: str) -> Any:
+        return sum(model.fixtures_wide_enough[fixture] for fixture in model.fixtures if fixture.type == fixture_type) >= 1
+
+    model.at_least_one_wide = pyo.Constraint(list(kitchen.relation_rules.one_wide), rule=at_least_one_wide)
 
 
 def set_objective(model: KitchenModel) -> None:

@@ -187,7 +187,7 @@ def load_placement_rules(rules_data: list[dict[str, Any]]) -> list[PlacementRule
 
 def load_relation_rules(rules_data: list[dict[str, Any]]) -> RelationRules:
     # might raise exceptions if input is not correct
-    relation_rules = RelationRules({}, {}, {}, {})
+    relation_rules = RelationRules({}, {}, {}, {}, {})
 
     for rule_data in rules_data:
         rule_type = rule_data['rule_type']
@@ -203,6 +203,8 @@ def load_relation_rules(rules_data: list[dict[str, Any]]) -> RelationRules:
                 relation_rules.wall_distances[fixture_type] = rule_data['length']
             case 'min_worktop':
                 relation_rules.min_worktops[fixture_type] = rule_data['length']
+            case 'one_wide':
+                relation_rules.one_wide[fixture_type] = rule_data['length']
 
     return relation_rules
 
