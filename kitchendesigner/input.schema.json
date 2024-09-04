@@ -28,6 +28,18 @@
                 "required": ["name", "width", "depth", "position"]
             }
         },
+        "walls": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "group": { "type": "number" },
+                    "left": { "type": "number" },
+                    "right": { "type": "number" }
+                },
+                "required": ["group", "left", "right"]
+            }
+        },
         "rules": {
             "type": "array",
             "items": {
@@ -66,6 +78,17 @@
                     "min_distance": { "type": "number" }
                 },
                 "required": ["fixture_type1", "fixture_type2", "min_distance"]
+            }
+        },
+        "wall_distances": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "fixture_type": { "type": "string" },
+                    "suggested_min_distance": { "type": "number" }
+                },
+                "required": ["fixture_type", "suggested_min_distance"]
             }
         },
         "zones": {

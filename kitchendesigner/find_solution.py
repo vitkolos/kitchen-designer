@@ -86,6 +86,7 @@ class KitchenModel(pyo.ConcreteModel):  # type: ignore[misc]
         model.fixtures_target_y_dist = pyo.Var(model.fixtures, domain=pyo.NonNegativeReals,
                                                bounds=(0, max_canvas_size), initialize=0)
         model.fixtures_target_y_further = pyo.Var(model.fixtures, domain=pyo.Binary, initialize=0)
+        model.fixtures_close_to_wall = pyo.Var(model.fixtures, domain=pyo.Binary, initialize=0)
 
         # zone variables
         model.zones_x = pyo.Var(model.zones, domain=pyo.NonNegativeReals, bounds=(0, max_canvas_size))
@@ -144,7 +145,7 @@ def set_constraints(kitchen: Kitchen, model: KitchenModel) -> None:
     model.no_empty_nonzero_segments = pyo.Constraint(model.segments, rule=no_empty_nonzero_segments)
 
     def no_zero_nonempty_segments(model: KitchenModel, segment: Segment) -> Any:
-        """segment contains a fixture => its width is at least minimal"""
+        """segment contains a fixture => its width >= minimum"""
         return model.widths[segment] >= min_fixture_width * model.used[segment]
 
     model.no_zero_nonempty_segments = pyo.Constraint(model.segments, rule=no_zero_nonempty_segments)
@@ -161,7 +162,7 @@ def set_constraints(kitchen: Kitchen, model: KitchenModel) -> None:
     # WIDTH RULES
 
     def width_rules(model: KitchenModel, segment: Segment, fixture: Fixture, current_clause: int) -> Any:
-        """enforce minimal and maximal fixture width"""
+        """ensure that the fixture width is between the lower and upper bounds"""
         return get_clause([
             model.widths[segment] >= (fixture.width_min*model.pairs[segment, fixture]),
             model.widths[segment] <= fixture.width_max + max_fixture_width * (1-model.pairs[segment, fixture])
@@ -720,10 +721,10 @@ def set_constraints(kitchen: Kitchen, model: KitchenModel) -> None:
 
     model.is_aba_pattern = pyo.Constraint(model.segments, rule=is_aba_pattern)
 
-    # MINIMAL DISTANCE RULE
+    # MINIMUM DISTANCE RULE
 
-    def ensure_minimal_distance(model: KitchenModel, group: int, fixture1: Fixture, fixture2: Fixture, current_clause: int) -> Any:
-        """if a minimal distance is defined, ensure that it holds \n
+    def ensure_min_distance(model: KitchenModel, group: int, fixture1: Fixture, fixture2: Fixture, current_clause: int) -> Any:
+        """if the minimum distance is specified, ensure that it holds \n
         if one or both fixtures are not present in the current group, disable the constraints"""
         if (fixture1.type, fixture2.type) in kitchen.min_distances:
             md = kitchen.min_distances[(fixture1.type, fixture2.type)]
@@ -742,8 +743,33 @@ def set_constraints(kitchen: Kitchen, model: KitchenModel) -> None:
         else:
             return pyo.Constraint.Skip
 
-    model.ensure_minimal_distance = pyo.Constraint(
-        model.groups, model.fixtures, model.fixtures, pyo.RangeSet(clause_count := 2), rule=ensure_minimal_distance)
+    model.ensure_min_distance = pyo.Constraint(
+        model.groups, model.fixtures, model.fixtures, pyo.RangeSet(clause_count := 2), rule=ensure_min_distance)
+
+    # WALL DISTANCE RULE
+
+    def wall_distance(model: KitchenModel, group: int, fixture: Fixture, current_clause: int) -> Any:
+        """makes sure that fixtures_close_to_wall IS NOT 0 when the fixture is close to wall (but it might be 1 when it isn't) \n
+        fixture is close to the wall => fixtures_close_to_wall"""
+        if group in kitchen.walls and fixture.type in kitchen.wall_distances:
+            suggested_min_dist = kitchen.wall_distances[fixture.type]
+            wrong_group = 1-model.present_groups[group, fixture]
+            M = max_canvas_size
+            fixture_left = model.fixtures_offset[fixture]
+            fixture_right = fixture_left + model.fixtures_width[fixture]
+            wall_left = kitchen.walls[group].left
+            wall_right = kitchen.walls[group].right
+            close_to_wall = model.fixtures_close_to_wall[fixture]
+
+            return get_clause([
+                wall_left + suggested_min_dist <= fixture_left + M*wrong_group + M*close_to_wall,
+                fixture_right + suggested_min_dist <= wall_right + M*wrong_group + M*close_to_wall,
+            ], current_clause)
+        else:
+            return pyo.Constraint.Skip
+
+    model.wall_distance = pyo.Constraint(model.groups, model.fixtures,
+                                         pyo.RangeSet(clause_count := 2), rule=wall_distance)
 
 
 def set_objective(model: KitchenModel) -> None:
@@ -780,8 +806,11 @@ def set_objective(model: KitchenModel) -> None:
         intersections = sum(model.segment_intersects[s, t] for s in model.segments for t in model.segments) / -5
         intersections += sum(model.part_segment_intersects[p, s] for s in model.segments for p in model.parts) / -5
 
+        # minimize fixtures too close to wall
+        close_to_wall = sum(model.fixtures_close_to_wall[fixture] for fixture in model.fixtures) / -1
+
         return (present_count + width_coeff + width_patterns + target_dist + zone_dist + center_dist + storage + worktop
-                + intersections)
+                + intersections + close_to_wall)
 
     model.fitness = pyo.Objective(rule=fitness, sense=pyo.maximize)
 

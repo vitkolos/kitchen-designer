@@ -95,6 +95,13 @@ class Target:
 
 
 @dataclass
+class Wall:
+    group: int
+    left: float
+    right: float
+
+
+@dataclass
 class Zone:
     name: str
     is_optimized: bool
@@ -106,8 +113,10 @@ class Kitchen:
     groups: list[int]
     parts: list[KitchenPart]
     segments: list[Segment]
+    walls: dict[int, Wall]
     rules: list[Rule]
     targets: dict[str, Target]
     min_distances: dict[tuple[str, str], float]
+    wall_distances: dict[str, float]
     zones: list[Zone]
     fixtures: list[Fixture]

@@ -28,6 +28,13 @@
             "edge_left": true
         }
     ],
+    "walls": [
+        {
+            "group": 1,
+            "left": 0,
+            "right": 60
+        }
+    ],
     "rules": [
         {
             "type": "include",
@@ -35,6 +42,8 @@
             "attribute_name": "type",
             "attribute_value": "sink"
         }
+    ],
+    "wall_distances": [
     ],
     "zones": [
         {

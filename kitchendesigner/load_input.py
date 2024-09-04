@@ -11,13 +11,15 @@ def load() -> Kitchen:
     loaded_data = load_data_from_files()
     zones = load_zones(loaded_data['zones'])
     fixtures = load_fictures(loaded_data['available_fixtures'], [zone.name for zone in zones])
-    parts, kitchen_segments = load_parts_segments(loaded_data['kitchen_parts'])
+    parts, segments = load_parts_segments(loaded_data['kitchen_parts'])
+    walls = load_walls(get_list_field(loaded_data, 'walls'))
     rules = load_rules(get_list_field(loaded_data, 'rules'))
     targets = load_targets(get_list_field(loaded_data, 'targets'))
     min_distances = load_min_distances(get_list_field(loaded_data, 'min_distances'))
+    wall_distances = load_wall_distances(get_list_field(loaded_data, 'wall_distances'))
     preprocess_fixtures_and_rules(fixtures, rules)
     groups = list(set(part.position.group_number for part in parts))
-    return Kitchen(groups, parts, kitchen_segments, rules, targets, min_distances, zones, fixtures)
+    return Kitchen(groups, parts, segments, walls, rules, targets, min_distances, wall_distances, zones, fixtures)
 
 
 def get_list_field(data_dict: dict[str, list[dict[str, Any]]], key: str) -> list[dict[str, Any]]:
@@ -149,6 +151,16 @@ def load_parts_segments(kitchen_parts_data: list[dict[str, Any]]) -> tuple[list[
     return parts, kitchen_segments
 
 
+def load_walls(walls_data: list[dict[str, Any]]) -> dict[int, Wall]:
+    walls = {}
+
+    for wall_data in walls_data:
+        group = wall_data['group']
+        walls[group] = Wall(group, wall_data['left'], wall_data['right'])
+
+    return walls
+
+
 def load_rules(rules_data: list[dict[str, Any]]) -> list[Rule]:
     # might raise exceptions if input is not correct
     rules = []
@@ -188,6 +200,16 @@ def load_min_distances(min_distances_data: list[dict[str, Any]]) -> dict[tuple[s
         min_distances[(fixture_type1, fixture_type2)] = min_distance_data['min_distance']
 
     return min_distances
+
+
+def load_wall_distances(wall_distances_data: list[dict[str, Any]]) -> dict[str, float]:
+    wall_distances = {}
+
+    for wall_distance_data in wall_distances_data:
+        fixture_type = wall_distance_data['fixture_type']
+        wall_distances[fixture_type] = wall_distance_data['suggested_min_distance']
+
+    return wall_distances
 
 
 def preprocess_fixtures_and_rules(fixtures: list[Fixture], rules: list[Rule]) -> None:
