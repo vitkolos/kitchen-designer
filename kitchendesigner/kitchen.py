@@ -72,7 +72,7 @@ class KitchenPart:
 
 
 @dataclass
-class Rule:
+class PlacementRule:
     type: str
     area: str
     attribute_name: str
@@ -89,10 +89,11 @@ class Rule:
 
 
 @dataclass
-class Target:
-    fixture_type: str
-    x: float
-    y: float
+class RelationRules:
+    targets: dict[str, tuple[float, float]]
+    min_distances: dict[tuple[str, str], float]
+    wall_distances: dict[str, float]
+    min_worktops: dict[str, float]
 
 
 @dataclass
@@ -115,9 +116,7 @@ class Kitchen:
     parts: list[KitchenPart]
     segments: list[Segment]
     walls: dict[int, Wall]
-    rules: list[Rule]
-    targets: dict[str, Target]
-    min_distances: dict[tuple[str, str], float]
-    wall_distances: dict[str, float]
+    rules: list[PlacementRule]
+    relation_rules: RelationRules
     zones: list[Zone]
     fixtures: list[Fixture]

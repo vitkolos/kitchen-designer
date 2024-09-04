@@ -35,9 +35,9 @@
             "right": 60
         }
     ],
-    "rules": [
+    "placement_rules": [
         {
-            "type": "include",
+            "rule_type": "include",
             "area": "group_section",
             "attribute_name": "type",
             "attribute_value": "sink",
@@ -46,7 +46,12 @@
             "section_width": 20
         }
     ],
-    "wall_distances": [
+    "relation_rules": [
+        {
+            "rule_type": "min_worktop",
+            "fixture_type": "sink",
+            "length": 10
+        }
     ],
     "zones": [
         {

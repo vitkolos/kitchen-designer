@@ -13,13 +13,11 @@ def load() -> Kitchen:
     fixtures = load_fictures(loaded_data['available_fixtures'], [zone.name for zone in zones])
     parts, segments = load_parts_segments(loaded_data['kitchen_parts'])
     walls = load_walls(get_list_field(loaded_data, 'walls'))
-    rules = load_rules(get_list_field(loaded_data, 'rules'))
-    targets = load_targets(get_list_field(loaded_data, 'targets'))
-    min_distances = load_min_distances(get_list_field(loaded_data, 'min_distances'))
-    wall_distances = load_wall_distances(get_list_field(loaded_data, 'wall_distances'))
-    preprocess_fixtures_and_rules(fixtures, rules)
+    placement_rules = load_placement_rules(get_list_field(loaded_data, 'placement_rules'))
+    relation_rules = load_relation_rules(get_list_field(loaded_data, 'relation_rules'))
+    preprocess_fixtures_and_rules(fixtures, placement_rules)
     groups = list(set(part.position.group_number for part in parts))
-    return Kitchen(groups, parts, segments, walls, rules, targets, min_distances, wall_distances, zones, fixtures)
+    return Kitchen(groups, parts, segments, walls, placement_rules, relation_rules, zones, fixtures)
 
 
 def get_list_field(data_dict: dict[str, list[dict[str, Any]]], key: str) -> list[dict[str, Any]]:
@@ -167,12 +165,13 @@ def load_walls(walls_data: list[dict[str, Any]]) -> dict[int, Wall]:
     return walls
 
 
-def load_rules(rules_data: list[dict[str, Any]]) -> list[Rule]:
+def load_placement_rules(rules_data: list[dict[str, Any]]) -> list[PlacementRule]:
     # might raise exceptions if input is not correct
     rules = []
 
     for rule_data in rules_data:
-        rule = Rule(rule_data['type'], rule_data['area'], rule_data['attribute_name'], rule_data['attribute_value'])
+        rule = PlacementRule(rule_data['rule_type'], rule_data['area'],
+                             rule_data['attribute_name'], rule_data['attribute_value'])
 
         if rule.area == 'group':
             rule.group = rule_data['group']
@@ -186,39 +185,29 @@ def load_rules(rules_data: list[dict[str, Any]]) -> list[Rule]:
     return rules
 
 
-def load_targets(targets_data: list[dict[str, Any]]) -> dict[str, Target]:
-    targets = {}
+def load_relation_rules(rules_data: list[dict[str, Any]]) -> RelationRules:
+    # might raise exceptions if input is not correct
+    relation_rules = RelationRules({}, {}, {}, {})
 
-    for target_data in targets_data:
-        fixture_type = target_data['fixture_type']
-        target = Target(fixture_type, target_data['x'], target_data['y'])
-        targets[fixture_type] = target
+    for rule_data in rules_data:
+        rule_type = rule_data['rule_type']
+        fixture_type = rule_data['fixture_type']
 
-    return targets
+        match rule_type:
+            case 'target':
+                relation_rules.targets[fixture_type] = (rule_data['x'], rule_data['y'])
+            case 'min_distance':
+                fixture_type2 = rule_data['fixture_type2']
+                relation_rules.min_distances[(fixture_type, fixture_type2)] = rule_data['length']
+            case 'wall_distance':
+                relation_rules.wall_distances[fixture_type] = rule_data['length']
+            case 'min_worktop':
+                relation_rules.min_worktops[fixture_type] = rule_data['length']
 
-
-def load_min_distances(min_distances_data: list[dict[str, Any]]) -> dict[tuple[str, str], float]:
-    min_distances = {}
-
-    for min_distance_data in min_distances_data:
-        fixture_type1 = min_distance_data['fixture_type1']
-        fixture_type2 = min_distance_data['fixture_type2']
-        min_distances[(fixture_type1, fixture_type2)] = min_distance_data['min_distance']
-
-    return min_distances
-
-
-def load_wall_distances(wall_distances_data: list[dict[str, Any]]) -> dict[str, float]:
-    wall_distances = {}
-
-    for wall_distance_data in wall_distances_data:
-        fixture_type = wall_distance_data['fixture_type']
-        wall_distances[fixture_type] = wall_distance_data['suggested_min_distance']
-
-    return wall_distances
+    return relation_rules
 
 
-def preprocess_fixtures_and_rules(fixtures: list[Fixture], rules: list[Rule]) -> None:
+def preprocess_fixtures_and_rules(fixtures: list[Fixture], rules: list[PlacementRule]) -> None:
     for rule in rules:
         if rule.type == 'exclude' and rule.area == 'kitchen':
             fixtures[:] = [fixture for fixture in fixtures if

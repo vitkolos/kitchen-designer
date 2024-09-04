@@ -11,9 +11,6 @@ vertical_continuity_tolerance = 0.1
 width_same_tolerance = 1
 width_different_tolerance = 5
 width_penult_similar_tolerance = 2
-required_worktop = {
-    'sink': 10
-}
 
 
 def solve(kitchen: Kitchen) -> None:
@@ -33,8 +30,8 @@ class KitchenModel(pyo.ConcreteModel):  # type: ignore[misc]
         model.segments: Iterable[Segment] = pyo.Set(initialize=kitchen.segments)
         model.parts: Iterable[KitchenPart] = pyo.Set(initialize=kitchen.parts)
         model.groups: Iterable[int] = pyo.Set(initialize=kitchen.groups)
-        model.rules_all: Iterable[Rule] = pyo.Set(initialize=kitchen.rules)
-        model.rules_section: Iterable[Rule] = pyo.Set(
+        model.rules_all: Iterable[PlacementRule] = pyo.Set(initialize=kitchen.rules)
+        model.rules_section: Iterable[PlacementRule] = pyo.Set(
             initialize=model.rules_all, filter=lambda _, rule: rule.area == 'group_section')
         model.zones: Iterable[str] = pyo.Set(initialize=[zone.name for zone in kitchen.zones if zone.is_optimized])
 
@@ -339,11 +336,11 @@ def set_constraints(kitchen: Kitchen, model: KitchenModel) -> None:
 
     # EXCLUDE/INCLUDE RULES
 
-    def attr_matches(rule: Rule, fixture: Fixture) -> Any:
+    def attr_matches(rule: PlacementRule, fixture: Fixture) -> Any:
         """check if the fixture is affected by the rule"""
         return getattr(fixture, rule.attribute_name) == rule.attribute_value
 
-    def evaluate_user_rules(model: KitchenModel, rule: Rule) -> Any:
+    def evaluate_user_rules(model: KitchenModel, rule: PlacementRule) -> Any:
         """applies some of the user-defined rules"""
         match rule.type:
             case 'include':
@@ -364,7 +361,7 @@ def set_constraints(kitchen: Kitchen, model: KitchenModel) -> None:
 
     model.evaluate_user_rules = pyo.Constraint(model.rules_all, rule=evaluate_user_rules)
 
-    def evaluate_user_rules_section(model: KitchenModel, rule: Rule, fixture: Fixture, current_clause: int) -> Any:
+    def evaluate_user_rules_section(model: KitchenModel, rule: PlacementRule, fixture: Fixture, current_clause: int) -> Any:
         """applies the user-defined rules that use sections"""
         if attr_matches(rule, fixture):
             M = max_canvas_size
@@ -596,11 +593,11 @@ def set_constraints(kitchen: Kitchen, model: KitchenModel) -> None:
         y_dist = model.fixtures_target_y_dist[fixture]
         y_further = model.fixtures_target_y_further[fixture]
 
-        if fixture.type in kitchen.targets:
+        if fixture.type in kitchen.relation_rules.targets:
             fixture_x = model.fixtures_x[fixture]
-            target_x = kitchen.targets[fixture.type].x
+            target_x = kitchen.relation_rules.targets[fixture.type][0]
             fixture_y = model.fixtures_y[fixture]
-            target_y = kitchen.targets[fixture.type].y
+            target_y = kitchen.relation_rules.targets[fixture.type][0]
 
             clauses = [
                 x_dist >= target_x - fixture_x - M*(1-p),
@@ -738,8 +735,8 @@ def set_constraints(kitchen: Kitchen, model: KitchenModel) -> None:
     def ensure_min_distance(model: KitchenModel, group: int, fixture1: Fixture, fixture2: Fixture, current_clause: int) -> Any:
         """if the minimum distance is specified, ensure that it holds \n
         if one or both fixtures are not present in the current group, disable the constraints"""
-        if (fixture1.type, fixture2.type) in kitchen.min_distances:
-            md = kitchen.min_distances[(fixture1.type, fixture2.type)]
+        if (fixture1.type, fixture2.type) in kitchen.relation_rules.min_distances:
+            md = kitchen.relation_rules.min_distances[(fixture1.type, fixture2.type)]
             offset1 = model.fixtures_offset[fixture1]
             offset2 = model.fixtures_offset[fixture2]
             width1 = model.fixtures_width[fixture1]
@@ -763,8 +760,8 @@ def set_constraints(kitchen: Kitchen, model: KitchenModel) -> None:
     def wall_distance(model: KitchenModel, group: int, fixture: Fixture, current_clause: int) -> Any:
         """makes sure that fixtures_close_to_wall IS NOT 0 when the fixture is close to wall (but it might be 1 when it isn't) \n
         fixture is close to the wall => fixtures_close_to_wall"""
-        if group in kitchen.walls and fixture.type in kitchen.wall_distances:
-            suggested_min_dist = kitchen.wall_distances[fixture.type]
+        if group in kitchen.walls and fixture.type in kitchen.relation_rules.wall_distances:
+            suggested_min_dist = kitchen.relation_rules.wall_distances[fixture.type]
             wrong_group = 1-model.present_groups[group, fixture]
             M = max_canvas_size
             fixture_left = model.fixtures_offset[fixture]
@@ -836,8 +833,8 @@ def set_constraints(kitchen: Kitchen, model: KitchenModel) -> None:
         is_left = model.segments_continuous_worktop_required_left[segment]
         p = model.pairs[segment, fixture]
 
-        if fixture.type in required_worktop:
-            rw = required_worktop[fixture.type]
+        if fixture.type in kitchen.relation_rules.min_worktops:
+            rw = kitchen.relation_rules.min_worktops[fixture.type]
             left_rule = (is_left <= 0 if segment.is_first else
                          rw <= model.segments_continuous_worktop_left[segment.previous] + (1-is_left)*M + (1-p)*M)
             right_rule = (is_left >= 1 if segment.is_last else

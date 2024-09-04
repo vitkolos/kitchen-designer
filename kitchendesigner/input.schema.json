@@ -40,12 +40,12 @@
                 "required": ["group", "left", "right"]
             }
         },
-        "rules": {
+        "placement_rules": {
             "type": "array",
             "items": {
                 "type": "object",
                 "properties": {
-                    "type": { "enum": ["exclude", "include"] },
+                    "rule_type": { "enum": ["exclude", "include"] },
                     "area": { "enum": ["kitchen", "group", "group_section"] },
                     "attribute_name": { "enum": ["name", "type", "zone"] },
                     "attribute_value": { "type": "string" },
@@ -53,42 +53,22 @@
                     "section_offset": { "type": "number" },
                     "section_width": { "type": "number" }
                 },
-                "required": ["type", "area", "attribute_name", "attribute_value"]
+                "required": ["rule_type", "area", "attribute_name", "attribute_value"]
             }
         },
-        "targets": {
+        "relation_rules": {
             "type": "array",
             "items": {
                 "type": "object",
                 "properties": {
+                    "rule_type": { "enum": ["target", "min_distance", "wall_distance", "min_worktop"] },
                     "fixture_type": { "type": "string" },
+                    "fixture_type2": { "type": "string" },
+                    "length": { "type": "number" },
                     "x": { "type": "number" },
                     "y": { "type": "number" }
                 },
-                "required": ["fixture_type", "x", "y"]
-            }
-        },
-        "min_distances": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "fixture_type1": { "type": "string" },
-                    "fixture_type2": { "type": "string" },
-                    "min_distance": { "type": "number" }
-                },
-                "required": ["fixture_type1", "fixture_type2", "min_distance"]
-            }
-        },
-        "wall_distances": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "fixture_type": { "type": "string" },
-                    "suggested_min_distance": { "type": "number" }
-                },
-                "required": ["fixture_type", "suggested_min_distance"]
+                "required": ["rule_type", "fixture_type"]
             }
         },
         "zones": {
