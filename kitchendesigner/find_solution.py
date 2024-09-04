@@ -11,6 +11,9 @@ vertical_continuity_tolerance = 0.1
 width_same_tolerance = 1
 width_different_tolerance = 5
 width_penult_similar_tolerance = 2
+required_worktop = {
+    'sink': 10
+}
 
 
 def solve(kitchen: Kitchen) -> None:
@@ -55,7 +58,10 @@ class KitchenModel(pyo.ConcreteModel):  # type: ignore[misc]
         model.segments_offset = pyo.Var(model.segments, domain=pyo.NonNegativeReals, bounds=(0, max_canvas_size))
         model.segments_continuous_worktop_left = pyo.Var(
             model.segments, domain=pyo.NonNegativeReals, bounds=(0, max_canvas_size))
+        model.segments_continuous_worktop_right = pyo.Var(
+            model.segments, domain=pyo.NonNegativeReals, bounds=(0, max_canvas_size))
         model.segments_continuous_worktop_left_max = pyo.Var(model.segments, domain=pyo.Binary, initialize=0)
+        model.segments_continuous_worktop_required_left = pyo.Var(model.segments, domain=pyo.Binary, initialize=0)
         model.segments_width_difference = pyo.Var(
             model.segments, domain=pyo.NonNegativeReals, bounds=(0, max_fixture_width))
         model.segments_previous_larger = pyo.Var(model.segments, domain=pyo.Binary)
@@ -779,29 +785,38 @@ def set_constraints(kitchen: Kitchen, model: KitchenModel) -> None:
 
     # WORKTOP RULES
 
-    def worktop_left_unused_segments(model: KitchenModel, segment: Segment) -> Any:
-        return model.segments_continuous_worktop_left[segment] <= max_canvas_size * model.used[segment]
+    def worktop_width_unused_segments(model: KitchenModel, segment: Segment, current_clause: int) -> Any:
+        return get_clause([
+            model.segments_continuous_worktop_left[segment] <= max_canvas_size * model.used[segment],
+            model.segments_continuous_worktop_right[segment] <= max_canvas_size * model.used[segment],
+        ], current_clause)
 
-    model.worktop_left_unused_segments = pyo.Constraint(model.segments, rule=worktop_left_unused_segments)
+    model.worktop_width_unused_segments = pyo.Constraint(
+        model.segments, pyo.RangeSet(clause_count := 2), rule=worktop_width_unused_segments)
 
-    def worktop_left_fixtures(model: KitchenModel, segment: Segment, fixture: Fixture, current_clause: int) -> Any:
-        ww = model.segments_continuous_worktop_left[segment]
+    def worktop_width_fixtures(model: KitchenModel, segment: Segment, fixture: Fixture, current_clause: int) -> Any:
+        wl = model.segments_continuous_worktop_left[segment]
+        wr = model.segments_continuous_worktop_right[segment]
 
         if fixture.has_worktop:
-            previous = 0 if segment.is_first or segment.previous is None else model.segments_continuous_worktop_left[
-                segment.previous]
+            previous = 0 if segment.is_first else model.segments_continuous_worktop_left[segment.previous]
+            next = 0 if segment.is_last else model.segments_continuous_worktop_right[segment.next]
             return get_clause([
-                previous + model.widths[segment] <= ww + (1-model.pairs[segment, fixture])*max_canvas_size,
-                ww <= previous + model.widths[segment] + (1-model.pairs[segment, fixture])*max_canvas_size
+                previous + model.widths[segment] <= wl + (1-model.pairs[segment, fixture])*max_canvas_size,
+                wl <= previous + model.widths[segment] + (1-model.pairs[segment, fixture])*max_canvas_size,
+                next + model.widths[segment] <= wr + (1-model.pairs[segment, fixture])*max_canvas_size,
+                wr <= next + model.widths[segment] + (1-model.pairs[segment, fixture])*max_canvas_size,
             ], current_clause)
         else:
             return get_clause([
-                ww <= (1-model.pairs[segment, fixture])*max_canvas_size,
-                pyo.Constraint.Skip
+                wl <= (1-model.pairs[segment, fixture])*max_canvas_size,
+                wr <= (1-model.pairs[segment, fixture])*max_canvas_size,
+                pyo.Constraint.Skip,
+                pyo.Constraint.Skip,
             ], current_clause)
 
-    model.worktop_left_fixtures = pyo.Constraint(
-        model.segments, model.fixtures, pyo.RangeSet(clause_count := 2), rule=worktop_left_fixtures)
+    model.worktop_width_fixtures = pyo.Constraint(
+        model.segments, model.fixtures, pyo.RangeSet(clause_count := 4), rule=worktop_width_fixtures)
 
     def worktop_max_segments(model: KitchenModel, segment: Segment, current_clause: int) -> Any:
         M = max_canvas_size
@@ -813,7 +828,26 @@ def set_constraints(kitchen: Kitchen, model: KitchenModel) -> None:
 
     model.worktop_max_segments = pyo.Constraint(
         model.segments, pyo.RangeSet(clause_count := 2), rule=worktop_max_segments)
-    model.worktop_best_segment = pyo.Constraint(expr=sum(model.segments_continuous_worktop_left_max[s] for s in model.segments) >= 1)
+    model.worktop_best_segment = pyo.Constraint(
+        expr=sum(model.segments_continuous_worktop_left_max[s] for s in model.segments) >= 1)
+
+    def worktop_required(model: KitchenModel, segment: Segment, fixture: Fixture, current_clause: int) -> Any:
+        M = max_canvas_size
+        is_left = model.segments_continuous_worktop_required_left[segment]
+        p = model.pairs[segment, fixture]
+
+        if fixture.type in required_worktop:
+            rw = required_worktop[fixture.type]
+            left_rule = (is_left <= 0 if segment.is_first else
+                         rw <= model.segments_continuous_worktop_left[segment.previous] + (1-is_left)*M + (1-p)*M)
+            right_rule = (is_left >= 1 if segment.is_last else
+                          rw <= model.segments_continuous_worktop_right[segment.next] + is_left*M + (1-p)*M)
+            return get_clause([left_rule, right_rule], current_clause)
+        else:
+            return pyo.Constraint.Skip
+
+    model.worktop_required = pyo.Constraint(model.segments, model.fixtures,
+                                            pyo.RangeSet(clause_count := 2), rule=worktop_required)
 
 
 def set_objective(model: KitchenModel) -> None:

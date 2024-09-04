@@ -38,9 +38,12 @@
     "rules": [
         {
             "type": "include",
-            "area": "kitchen",
+            "area": "group_section",
             "attribute_name": "type",
-            "attribute_value": "sink"
+            "attribute_value": "sink",
+            "group": 1,
+            "section_offset": 40,
+            "section_width": 20
         }
     ],
     "wall_distances": [

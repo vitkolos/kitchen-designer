@@ -122,6 +122,7 @@ def load_fictures(available_fixtures_data: list[dict[str, Any]], zones_str: list
 
 def load_parts_segments(kitchen_parts_data: list[dict[str, Any]]) -> tuple[list[KitchenPart], list[Segment]]:
     segment: Segment | None = None
+    previous_segment: Segment | None = None
 
     parts = []
     kitchen_segments = []
@@ -143,7 +144,12 @@ def load_parts_segments(kitchen_parts_data: list[dict[str, Any]]) -> tuple[list[
         parts.append(kitchen_part)
 
         for i in range(segment_count):
-            segment = Segment(segment_number, kitchen_part, 0, None, i == 0, i == segment_count - 1, segment)
+            segment = Segment(segment_number, kitchen_part, 0, None, i == 0, i == segment_count - 1, previous_segment)
+
+            if previous_segment is not None:
+                previous_segment.next = segment
+
+            previous_segment = segment
             segment_number += 1
             part_segments.append(segment)
             kitchen_segments.append(segment)

@@ -34,6 +34,7 @@ class Segment:
     is_first: bool
     is_last: bool
     previous: Segment | None = field(repr=False)
+    next: Segment | None = field(repr=False, default=None)
 
     def __str__(self) -> str:
         return 'segment' + str(self.number)
