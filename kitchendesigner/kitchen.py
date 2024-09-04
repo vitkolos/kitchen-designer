@@ -108,5 +108,6 @@ class Kitchen:
     segments: list[Segment]
     rules: list[Rule]
     targets: dict[str, Target]
+    min_distances: dict[tuple[str, str], float]
     zones: list[Zone]
     fixtures: list[Fixture]

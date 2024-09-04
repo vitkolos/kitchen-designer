@@ -12,11 +12,20 @@ def load() -> Kitchen:
     zones = load_zones(loaded_data['zones'])
     fixtures = load_fictures(loaded_data['available_fixtures'], [zone.name for zone in zones])
     parts, kitchen_segments = load_parts_segments(loaded_data['kitchen_parts'])
-    rules = load_rules(loaded_data['rules'])
-    targets = load_targets(loaded_data['targets'])
+    rules = load_rules(get_list_field(loaded_data, 'rules'))
+    targets = load_targets(get_list_field(loaded_data, 'targets'))
+    min_distances = load_min_distances(get_list_field(loaded_data, 'min_distances'))
     preprocess_fixtures_and_rules(fixtures, rules)
     groups = list(set(part.position.group_number for part in parts))
-    return Kitchen(groups, parts, kitchen_segments, rules, targets, zones, fixtures)
+    return Kitchen(groups, parts, kitchen_segments, rules, targets, min_distances, zones, fixtures)
+
+
+def get_list_field(data_dict: dict[str, list[dict[str, Any]]], key: str) -> list[dict[str, Any]]:
+    """helper function, default for list field is [] (if not present in JSON)"""
+    if key in data_dict:
+        return data_dict[key]
+    else:
+        return []
 
 
 def get_bool_field(data_dict: dict[str, Any], key: str) -> Any:
@@ -123,7 +132,8 @@ def load_parts_segments(kitchen_parts_data: list[dict[str, Any]]) -> tuple[list[
         edge_right: bool = get_bool_field(part_data, 'edge_right')
         segment_count = math.ceil(width/find_solution.min_fixture_width)
         part_segments: list[Segment] = []
-        # TODO: check that the entire kitchen can fit in positive coordinates
+        # TODO: 1) check that the entire kitchen can fit in positive coordinates
+        #       2) check that group numbers are integers
         position = Position(part_data['position']['x'], part_data['position']['y'],
                             part_data['position']['angle'], part_data['position']['group_number'], part_data['position']['group_offset'])
         kitchen_part = KitchenPart(part_data['name'], is_top, position, width,
@@ -167,6 +177,17 @@ def load_targets(targets_data: list[dict[str, Any]]) -> dict[str, Target]:
         targets[fixture_type] = target
 
     return targets
+
+
+def load_min_distances(min_distances_data: list[dict[str, Any]]) -> dict[tuple[str, str], float]:
+    min_distances = {}
+
+    for min_distance_data in min_distances_data:
+        fixture_type1 = min_distance_data['fixture_type1']
+        fixture_type2 = min_distance_data['fixture_type2']
+        min_distances[(fixture_type1, fixture_type2)] = min_distance_data['min_distance']
+
+    return min_distances
 
 
 def preprocess_fixtures_and_rules(fixtures: list[Fixture], rules: list[Rule]) -> None:

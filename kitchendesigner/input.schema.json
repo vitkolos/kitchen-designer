@@ -56,6 +56,18 @@
                 "required": ["fixture_type", "x", "y"]
             }
         },
+        "min_distances": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "fixture_type1": { "type": "string" },
+                    "fixture_type2": { "type": "string" },
+                    "min_distance": { "type": "number" }
+                },
+                "required": ["fixture_type1", "fixture_type2", "min_distance"]
+            }
+        },
         "zones": {
             "type": "array",
             "items": {
@@ -96,5 +108,5 @@
             }
         }
     },
-    "required": ["kitchen_parts", "available_fixtures"]
+    "required": ["kitchen_parts", "zones", "available_fixtures"]
 }

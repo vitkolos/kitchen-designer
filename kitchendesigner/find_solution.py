@@ -45,6 +45,7 @@ class KitchenModel(pyo.ConcreteModel):  # type: ignore[misc]
         model.part_segment_begins_before = pyo.Var(model.parts, model.segments, domain=pyo.Binary, initialize=0)
         model.part_segment_ends_after = pyo.Var(model.parts, model.segments, domain=pyo.Binary, initialize=0)
         model.part_segment_intersects = pyo.Var(model.parts, model.segments, domain=pyo.Binary, initialize=0)
+        model.min_dist_fixtures_order = pyo.Var(model.fixtures, model.fixtures, domain=pyo.Binary)
 
         # segment variables
         model.widths = pyo.Var(model.segments, domain=pyo.NonNegativeReals, bounds=(0, max_fixture_width))
@@ -719,7 +720,30 @@ def set_constraints(kitchen: Kitchen, model: KitchenModel) -> None:
 
     model.is_aba_pattern = pyo.Constraint(model.segments, rule=is_aba_pattern)
 
-    # TODO: storage & worktop space, rational use of fixtures (one sink is enough)
+    # MINIMAL DISTANCE RULE
+
+    def ensure_minimal_distance(model: KitchenModel, group: int, fixture1: Fixture, fixture2: Fixture, current_clause: int) -> Any:
+        """if a minimal distance is defined, ensure that it holds \n
+        if one or both fixtures are not present in the current group, disable the constraints"""
+        if (fixture1.type, fixture2.type) in kitchen.min_distances:
+            md = kitchen.min_distances[(fixture1.type, fixture2.type)]
+            offset1 = model.fixtures_offset[fixture1]
+            offset2 = model.fixtures_offset[fixture2]
+            width1 = model.fixtures_width[fixture1]
+            width2 = model.fixtures_width[fixture2]
+            present1 = model.present_groups[group, fixture1]
+            present2 = model.present_groups[group, fixture2]
+            fo = model.min_dist_fixtures_order[fixture1, fixture2]
+            M = max_canvas_size
+            return get_clause([
+                offset1 + width1 + md <= offset2 + M*fo + M*(2-present1-present2),
+                offset2 + width2 + md <= offset1 + M*(1-fo) + M*(2-present1-present2)
+            ], current_clause)
+        else:
+            return pyo.Constraint.Skip
+
+    model.ensure_minimal_distance = pyo.Constraint(
+        model.groups, model.fixtures, model.fixtures, pyo.RangeSet(clause_count := 2), rule=ensure_minimal_distance)
 
 
 def set_objective(model: KitchenModel) -> None:
