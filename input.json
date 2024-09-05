@@ -5,7 +5,7 @@
             "name": "part1",
             "position": {
                 "x": 0,
-                "y": 0,
+                "y": 60,
                 "angle": 0,
                 "group_number": 1,
                 "group_offset": 0
@@ -18,7 +18,7 @@
             "is_top": true,
             "position": {
                 "x": 20,
-                "y": 10,
+                "y": 70,
                 "angle": 0,
                 "group_number": 1,
                 "group_offset": 20
@@ -26,13 +26,19 @@
             "width": 40,
             "depth": 10,
             "edge_left": true
-        }
-    ],
-    "relation_rules": [
+        },
         {
-            "rule_type": "one_wide",
-            "fixture_type": "cupboard",
-            "length": 19
+            "name": "part3",
+            "is_top": false,
+            "position": {
+                "x": 60,
+                "y": 80,
+                "angle": -90,
+                "group_number": 2,
+                "group_offset": 0
+            },
+            "width": 60,
+            "depth": 20
         }
     ],
     "zones": [
@@ -41,11 +47,11 @@
             "is_optimized": true
         },
         {
-            "name": "storage",
-            "is_optimized": true
+            "name": "storage"
         },
         {
-            "name": "cooking"
+            "name": "cooking",
+            "is_optimized": true
         }
     ],
     "available_fixtures": [

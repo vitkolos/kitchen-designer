@@ -13,7 +13,9 @@ class Fixture:
     storage: float
     has_worktop: bool
     allow_edge: bool
+    is_corner: bool = False
     complementary_fixture: Fixture | None = None
+    second_corner_fixture: Fixture | None = None
     older_sibling: Fixture | None = field(default=None, repr=False)
 
     def __str__(self) -> str:
@@ -98,6 +100,20 @@ class RelationRules:
 
 
 @dataclass
+class Corner:
+    part1: KitchenPart
+    part1_left: bool
+    part2: KitchenPart
+    part2_left: bool
+
+    def __str__(self) -> str:
+        return f"{self.part1}/{self.part2}"
+
+    def __hash__(self) -> int:
+        return id(self)
+
+
+@dataclass
 class Wall:
     group: int
     left: float
@@ -117,6 +133,7 @@ class Kitchen:
     parts: list[KitchenPart]
     segments: list[Segment]
     walls: dict[int, Wall]
+    corners: list[Corner]
     rules: list[PlacementRule]
     relation_rules: RelationRules
     zones: list[Zone]

@@ -13,11 +13,21 @@ def load() -> Kitchen:
     fixtures = load_fictures(loaded_data['available_fixtures'], [zone.name for zone in zones])
     parts, segments = load_parts_segments(loaded_data['kitchen_parts'])
     walls = load_walls(get_list_field(loaded_data, 'walls'))
+    # FIXME
+    fixtures.append(c1 := Fixture("corn1", "corner", "storage", 21, 22, False, 2, True, False, True))
+    fixtures.append(Fixture("corn2", "corner", "storage", 21, 22, False, 2, True, False, True, None, c1))
+    fixtures.append(c3 := Fixture("corn3", "corner", "storage", 25, 25, False, 2, True, False, True))
+    fixtures.append(Fixture("corn4", "corner", "storage", 25, 25, False, 2, True, False, True, None, c3))
+    p1 = next(p for p in parts if p.name == 'part1')
+    p3 = next(p for p in parts if p.name == 'part3')
+    corners = [Corner(p1, False, p3, True)]
+    corners = []
+    # FIXME ^
     placement_rules = load_placement_rules(get_list_field(loaded_data, 'placement_rules'))
     relation_rules = load_relation_rules(get_list_field(loaded_data, 'relation_rules'))
     preprocess_fixtures_and_rules(fixtures, placement_rules)
     groups = list(set(part.position.group_number for part in parts))
-    return Kitchen(groups, parts, segments, walls, placement_rules, relation_rules, zones, fixtures)
+    return Kitchen(groups, parts, segments, walls, corners, placement_rules, relation_rules, zones, fixtures)
 
 
 def get_list_field(data_dict: dict[str, list[dict[str, Any]]], key: str) -> list[dict[str, Any]]:

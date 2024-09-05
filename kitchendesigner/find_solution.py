@@ -34,6 +34,7 @@ class KitchenModel(pyo.ConcreteModel):  # type: ignore[misc]
         model.rules_section: Iterable[PlacementRule] = pyo.Set(
             initialize=model.rules_all, filter=lambda _, rule: rule.area == 'group_section')
         model.zones: Iterable[str] = pyo.Set(initialize=[zone.name for zone in kitchen.zones if zone.is_optimized])
+        model.corners: Iterable[Corner] = pyo.Set(initialize=kitchen.corners)
 
         # product variables
         model.pairs = pyo.Var(model.segments, model.fixtures, domain=pyo.Binary)
@@ -46,6 +47,8 @@ class KitchenModel(pyo.ConcreteModel):  # type: ignore[misc]
         model.part_segment_ends_after = pyo.Var(model.parts, model.segments, domain=pyo.Binary, initialize=0)
         model.part_segment_intersects = pyo.Var(model.parts, model.segments, domain=pyo.Binary, initialize=0)
         model.min_dist_fixtures_order = pyo.Var(model.fixtures, model.fixtures, domain=pyo.Binary)
+        model.corners_segment = pyo.Var(model.corners, model.segments, domain=pyo.Binary, initialize=0)
+        model.corners_fixture = pyo.Var(model.corners, model.fixtures, domain=pyo.Binary, initialize=0)
 
         # segment variables
         model.widths = pyo.Var(model.segments, domain=pyo.NonNegativeReals, bounds=(0, max_fixture_width))
@@ -59,6 +62,7 @@ class KitchenModel(pyo.ConcreteModel):  # type: ignore[misc]
             model.segments, domain=pyo.NonNegativeReals, bounds=(0, max_canvas_size))
         model.segments_continuous_worktop_left_max = pyo.Var(model.segments, domain=pyo.Binary, initialize=0)
         model.segments_continuous_worktop_required_left = pyo.Var(model.segments, domain=pyo.Binary, initialize=0)
+        # pattern detection
         model.segments_width_difference = pyo.Var(
             model.segments, domain=pyo.NonNegativeReals, bounds=(0, max_fixture_width))
         model.segments_previous_larger = pyo.Var(model.segments, domain=pyo.Binary)
@@ -78,6 +82,9 @@ class KitchenModel(pyo.ConcreteModel):  # type: ignore[misc]
         model.fixtures_offset = pyo.Var(model.fixtures, domain=pyo.NonNegativeReals, bounds=(0, max_canvas_size))
         model.fixtures_segment_number = pyo.Var(
             model.fixtures, domain=pyo.NonNegativeIntegers, bounds=(0, max_segment_count))
+        model.fixtures_close_to_wall = pyo.Var(model.fixtures, domain=pyo.Binary, initialize=0)
+        model.fixtures_wide_enough = pyo.Var(model.fixtures, domain=pyo.Binary, initialize=0)
+        # position detection
         model.zones_x_helper = pyo.Var(model.fixtures, domain=pyo.NonNegativeReals, bounds=(0, max_canvas_size))
         model.zones_y_helper = pyo.Var(model.fixtures, domain=pyo.NonNegativeReals, bounds=(0, max_canvas_size))
         model.fixtures_zone_x_dist = pyo.Var(model.fixtures, domain=pyo.NonNegativeReals,
@@ -92,8 +99,6 @@ class KitchenModel(pyo.ConcreteModel):  # type: ignore[misc]
         model.fixtures_target_y_dist = pyo.Var(model.fixtures, domain=pyo.NonNegativeReals,
                                                bounds=(0, max_canvas_size), initialize=0)
         model.fixtures_target_y_further = pyo.Var(model.fixtures, domain=pyo.Binary, initialize=0)
-        model.fixtures_close_to_wall = pyo.Var(model.fixtures, domain=pyo.Binary, initialize=0)
-        model.fixtures_wide_enough = pyo.Var(model.fixtures, domain=pyo.Binary, initialize=0)
 
         # zone variables
         model.zones_x = pyo.Var(model.zones, domain=pyo.NonNegativeReals, bounds=(0, max_canvas_size))
@@ -863,6 +868,101 @@ def set_constraints(kitchen: Kitchen, model: KitchenModel) -> None:
         return sum(model.fixtures_wide_enough[fixture] for fixture in model.fixtures if fixture.type == fixture_type) >= 1
 
     model.at_least_one_wide = pyo.Constraint(list(kitchen.relation_rules.one_wide), rule=at_least_one_wide)
+
+    # CORNER RULES
+
+    def corner_not_empty(model: KitchenModel, corner: Corner, current_clause: int) -> Any:
+        def corner_clauses(part: KitchenPart, left: bool) -> Any:
+            if left:
+                return [
+                    model.parts_padding[part] == 0,
+                    model.used[part.segments[0]] == 1
+                ]
+            else:
+                return [
+                    model.parts_padding[part] + sum(model.widths[segment] for segment in part.segments) == part.width,
+                    pyo.Constraint.Skip,
+                ]
+
+        return get_clause(corner_clauses(corner.part1, corner.part1_left) + corner_clauses(corner.part2, corner.part2_left), current_clause)
+
+    model.corner_not_empty = pyo.Constraint(model.corners, pyo.RangeSet(clause_count := 4), rule=corner_not_empty)
+
+    def segment_check_corner(model: KitchenModel, corner: Corner, segment: Segment, current_clause: int) -> Any:
+        M = max_canvas_size
+
+        def corner_clause(part: KitchenPart, part2: KitchenPart, left: bool, number: int) -> Any:
+            release = M*(1-model.corners_segment[corner, segment])
+
+            if left:
+                a = model.segments_offset[segment]
+                b = part.position.group_offset + part2.depth
+                second_clause = a <= part.position.group_offset + release
+            else:
+                a = part.position.group_offset + part.width - part2.depth
+                b = model.segments_offset[segment] + model.widths[segment]
+                second_clause = part.position.group_offset + part.width <= b + release
+
+            return get_clause([
+                (0, a - b + M*model.corners_segment[corner, segment], M),
+                second_clause
+            ], current_clause)
+
+        if segment.part is corner.part1:
+            return corner_clause(corner.part1, corner.part2, corner.part1_left, 1)
+        elif segment.part is corner.part2:
+            return corner_clause(corner.part2, corner.part1, corner.part2_left, 2)
+        else:
+            return pyo.Constraint.Skip
+
+    model.segment_check_corner = pyo.Constraint(model.corners, model.segments, pyo.RangeSet(clause_count := 2), rule=segment_check_corner)
+
+    def segment_to_one_corner(model: KitchenModel, segment: Segment) -> Any:
+        if len(kitchen.corners) > 0:
+            return sum(model.corners_segment[corner, segment] for corner in model.corners) <= 1
+        else:
+            return pyo.Constraint.Skip
+
+    model.segment_to_one_corner = pyo.Constraint(model.segments, rule=segment_to_one_corner)
+
+    def fixture_in_corner(model: KitchenModel, segment: Segment, fixture: Fixture) -> Any:
+        segment_is_corner = sum(model.corners_segment[corner, segment] for corner in model.corners)
+
+        if fixture.is_corner:
+            return model.pairs[segment, fixture] <= segment_is_corner
+        else:
+            return model.pairs[segment, fixture] <= 1-segment_is_corner
+
+    model.fixture_in_corner = pyo.Constraint(model.segments, model.fixtures, rule=fixture_in_corner)
+
+    def corner_order(model: KitchenModel, corner: Corner, segment: Segment, fixture: Fixture) -> Any:
+        if segment.part is corner.part1 and fixture.second_corner_fixture is None and fixture.is_corner:
+            return model.corners_segment[corner, segment] <= 1-model.pairs[segment, fixture]
+        elif segment.part is corner.part2 and fixture.second_corner_fixture is not None and fixture.is_corner:
+            return model.corners_segment[corner, segment] <= 1-model.pairs[segment, fixture]
+        else:
+            return pyo.Constraint.Skip
+
+    model.corner_order = pyo.Constraint(model.corners, model.segments, model.fixtures, rule=corner_order)
+
+    def get_corner_fixture(model: KitchenModel, corner: Corner, segment: Segment, fixture: Fixture, current_clause: int) -> Any:
+        p = model.pairs[segment, fixture]
+
+        return get_clause([
+            model.corners_segment[corner, segment] <= model.corners_fixture[corner, fixture] + (1-p),
+            model.corners_fixture[corner, fixture] <= model.corners_segment[corner, segment] + (1-p),
+            model.corners_fixture[corner, fixture] <= model.present[fixture]
+        ], current_clause)
+
+    model.get_corner_fixture = pyo.Constraint(model.corners, model.segments, model.fixtures, pyo.RangeSet(clause_count := 3), rule=get_corner_fixture)
+
+    def sync_corner_fixtures(model: KitchenModel, corner: Corner, fixture: Fixture) -> Any:
+        if fixture.is_corner and fixture.second_corner_fixture is not None:
+            return model.corners_fixture[corner, fixture] == model.corners_fixture[corner, fixture.second_corner_fixture]
+        else:
+            return pyo.Constraint.Skip
+
+    model.sync_corner_fixtures = pyo.Constraint(model.corners, model.fixtures, rule=sync_corner_fixtures)
 
 
 def set_objective(model: KitchenModel) -> None:
