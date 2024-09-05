@@ -5,48 +5,114 @@
             "name": "part1",
             "position": {
                 "x": 0,
-                "y": 60,
+                "y": 200,
                 "angle": 0,
                 "group_number": 1,
                 "group_offset": 0
             },
-            "width": 60,
-            "depth": 20
+            "width": 476.5,
+            "depth": 60
         },
         {
             "name": "part2",
-            "is_top": true,
             "position": {
-                "x": 20,
-                "y": 70,
-                "angle": 0,
-                "group_number": 1,
-                "group_offset": 20
-            },
-            "width": 40,
-            "depth": 10,
-            "edge_left": true
-        },
-        {
-            "name": "part3",
-            "is_top": false,
-            "position": {
-                "x": 60,
-                "y": 80,
+                "x": 416.5,
+                "y": 260,
                 "angle": -90,
                 "group_number": 2,
                 "group_offset": 0
             },
-            "width": 60,
-            "depth": 20
+            "width": 209.5,
+            "depth": 60,
+            "edge_right": true
+        },
+        {
+            "name": "part3",
+            "is_top": true,
+            "position": {
+                "x": 0,
+                "y": 220,
+                "angle": 0,
+                "group_number": 1,
+                "group_offset": 0
+            },
+            "width": 85,
+            "depth": 40,
+            "edge_right": true
+        },
+        {
+            "name": "part4",
+            "is_top": true,
+            "position": {
+                "x": 256.5,
+                "y": 220,
+                "angle": 0,
+                "group_number": 1,
+                "group_offset": 256.5
+            },
+            "width": 220,
+            "depth": 40,
+            "edge_left": true
+        },
+        {
+            "name": "part5",
+            "is_top": true,
+            "position": {
+                "x": 436.5,
+                "y": 260,
+                "angle": -90,
+                "group_number": 2,
+                "group_offset": 0
+            },
+            "width": 209.5,
+            "depth": 40,
+            "edge_right": true
         }
     ],
     "corners": [
         {
             "part1_name": "part1",
             "part1_left": false,
-            "part2_name": "part3",
+            "part2_name": "part2",
             "part2_left": true
+        },
+        {
+            "part1_name": "part4",
+            "part1_left": false,
+            "part2_name": "part5",
+            "part2_left": true
+        }
+    ],
+    "placement_rules": [
+        {
+            "rule_type": "include",
+            "area": "kitchen",
+            "attribute_name": "type",
+            "attribute_value": "sink"
+        },
+        {
+            "rule_type": "include",
+            "area": "kitchen",
+            "attribute_name": "type",
+            "attribute_value": "dishwasher"
+        },
+        {
+            "rule_type": "include",
+            "area": "kitchen",
+            "attribute_name": "type",
+            "attribute_value": "stove"
+        },
+        {
+            "rule_type": "include",
+            "area": "kitchen",
+            "attribute_name": "type",
+            "attribute_value": "oven"
+        },
+        {
+            "rule_type": "include",
+            "area": "kitchen",
+            "attribute_name": "type",
+            "attribute_value": "fridge"
         }
     ],
     "zones": [
@@ -69,11 +135,9 @@
             "zone": "cleaning",
             "position_top": false,
             "position_bottom": true,
-            "width_min": 10,
-            "width_max": 30,
-            "storage": 1,
-            "has_worktop": true,
-            "allow_edge": false
+            "width_min": 50,
+            "width_max": 70,
+            "storage": 1
         },
         {
             "name": "fridge1",
@@ -81,8 +145,8 @@
             "zone": "storage",
             "position_top": true,
             "position_bottom": true,
-            "width_min": 15,
-            "width_max": 30,
+            "width_min": 60,
+            "width_max": 60,
             "storage": 4,
             "has_worktop": false,
             "allow_edge": true
@@ -93,71 +157,92 @@
             "zone": "cleaning",
             "position_top": false,
             "position_bottom": true,
-            "width_min": 15,
-            "width_max": 30,
-            "has_worktop": true,
-            "allow_edge": true
+            "width_min": 60,
+            "width_max": 60,
+            "has_worktop": true
         },
         {
             "name": "stove1",
             "type": "stove",
             "zone": "cooking",
-            "position_top": false,
+            "position_top": true,
             "position_bottom": true,
-            "width_min": 10,
-            "width_max": 12,
-            "storage": 0.3,
-            "has_worktop": true,
+            "width_min": 60,
+            "width_max": 90,
+            "storage": 2,
+            "has_worktop": false,
             "allow_edge": false
         },
         {
-            "name": "stove2",
-            "type": "stove",
-            "zone": "cooking",
+            "name": "cupboardA",
+            "type": "cupboard",
+            "zone": "storage",
             "position_top": false,
             "position_bottom": true,
-            "width_min": 15,
-            "width_max": 15,
-            "storage": 0.3,
+            "width_min": 50,
+            "width_max": 70,
+            "storage": 2,
+            "has_worktop": true,
+            "allow_edge": true,
+            "allow_multiple": true
+        },
+        {
+            "name": "corner1",
+            "type": "cupboard",
+            "zone": "storage",
+            "position_top": false,
+            "position_bottom": true,
+            "width_min": 85,
+            "width_max": 100,
+            "storage": 2,
+            "has_worktop": true,
+            "is_corner": true
+        },
+        {
+            "name": "oven1",
+            "type": "oven",
+            "zone": "cooking",
+            "position_top": true,
+            "position_bottom": true,
+            "width_min": 60,
+            "width_max": 60,
+            "storage": 2,
             "has_worktop": false,
             "allow_edge": false
+        },
+        {
+            "name": "cupboardT",
+            "type": "cupboard",
+            "zone": "storage",
+            "position_top": true,
+            "position_bottom": true,
+            "width_min": 50,
+            "width_max": 70,
+            "storage": 4,
+            "has_worktop": false,
+            "allow_multiple": true,
+            "allow_edge": true
         },
         {
             "name": "cupboard1",
             "type": "cupboard",
             "zone": "storage",
             "position_top": true,
-            "width_min": 10,
-            "width_max": 20,
+            "width_min": 35,
+            "width_max": 50,
             "storage": 1.75,
             "has_worktop": false,
             "allow_multiple": true,
             "allow_edge": true
         },
         {
-            "name": "corn1",
-            "type": "corner",
+            "name": "corner2",
+            "type": "cupboard",
             "zone": "storage",
-            "position_bottom": true,
-            "width_min": 21,
-            "width_max": 22,
-            "width_min2": 21,
-            "width_max2": 22,
-            "storage": 2,
-            "has_worktop": true,
-            "allow_edge": false,
-            "is_corner": true
-        },
-        {
-            "name": "corn3",
-            "type": "corner",
-            "zone": "storage",
-            "position_bottom": true,
-            "width_min": 25,
-            "width_max": 25,
-            "storage": 2,
-            "has_worktop": true,
-            "allow_edge": false,
+            "position_top": true,
+            "width_min": 45,
+            "width_max": 55,
+            "storage": 0,
             "is_corner": true
         }
     ]

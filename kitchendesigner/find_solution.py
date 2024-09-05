@@ -3,14 +3,14 @@ from typing import Any, Iterable
 import pyomo.environ as pyo
 import math
 
-min_fixture_width = 10
-max_fixture_width = 100
+min_fixture_width = 20
+max_fixture_width = 120
 max_canvas_size = 800
-max_segment_count = 100
-vertical_continuity_tolerance = 0.1
-width_same_tolerance = 1
-width_different_tolerance = 5
-width_penult_similar_tolerance = 2
+max_segment_count = 200
+vertical_continuity_tolerance = 0.5
+width_same_tolerance = 2
+width_different_tolerance = 10
+width_penult_similar_tolerance = 4
 
 
 def solve(kitchen: Kitchen) -> None:
@@ -991,9 +991,11 @@ def set_objective(model: KitchenModel) -> None:
 
         # maximize storage
         storage = sum(model.present[fixture] * fixture.storage for fixture in model.fixtures) / 5
+        # width can be multiplied instead of present?
 
         # maximize worktop
         worktop = sum(model.present[fixture] * int(fixture.has_worktop) for fixture in model.fixtures) / 10
+        # width can be multiplied instead of present?
         worktop += model.widest_worktop / 10
 
         # minimize vertical non-continuities

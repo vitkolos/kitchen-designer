@@ -1,0 +1,164 @@
+{
+    "$schema": "kitchendesigner/input.schema.json",
+    "kitchen_parts": [
+        {
+            "name": "part1",
+            "position": {
+                "x": 0,
+                "y": 60,
+                "angle": 0,
+                "group_number": 1,
+                "group_offset": 0
+            },
+            "width": 60,
+            "depth": 20
+        },
+        {
+            "name": "part2",
+            "is_top": true,
+            "position": {
+                "x": 20,
+                "y": 70,
+                "angle": 0,
+                "group_number": 1,
+                "group_offset": 20
+            },
+            "width": 40,
+            "depth": 10,
+            "edge_left": true
+        },
+        {
+            "name": "part3",
+            "is_top": false,
+            "position": {
+                "x": 60,
+                "y": 80,
+                "angle": -90,
+                "group_number": 2,
+                "group_offset": 0
+            },
+            "width": 60,
+            "depth": 20
+        }
+    ],
+    "corners": [
+        {
+            "part1_name": "part1",
+            "part1_left": false,
+            "part2_name": "part3",
+            "part2_left": true
+        }
+    ],
+    "zones": [
+        {
+            "name": "cleaning",
+            "is_optimized": true
+        },
+        {
+            "name": "storage"
+        },
+        {
+            "name": "cooking",
+            "is_optimized": true
+        }
+    ],
+    "available_fixtures": [
+        {
+            "name": "sink1",
+            "type": "sink",
+            "zone": "cleaning",
+            "position_top": false,
+            "position_bottom": true,
+            "width_min": 10,
+            "width_max": 30,
+            "storage": 1,
+            "has_worktop": true,
+            "allow_edge": false
+        },
+        {
+            "name": "fridge1",
+            "type": "fridge",
+            "zone": "storage",
+            "position_top": true,
+            "position_bottom": true,
+            "width_min": 15,
+            "width_max": 30,
+            "storage": 4,
+            "has_worktop": false,
+            "allow_edge": true
+        },
+        {
+            "name": "dishwasher1",
+            "type": "dishwasher",
+            "zone": "cleaning",
+            "position_top": false,
+            "position_bottom": true,
+            "width_min": 15,
+            "width_max": 30,
+            "has_worktop": true,
+            "allow_edge": true
+        },
+        {
+            "name": "stove1",
+            "type": "stove",
+            "zone": "cooking",
+            "position_top": false,
+            "position_bottom": true,
+            "width_min": 10,
+            "width_max": 12,
+            "storage": 0.3,
+            "has_worktop": true,
+            "allow_edge": false
+        },
+        {
+            "name": "stove2",
+            "type": "stove",
+            "zone": "cooking",
+            "position_top": false,
+            "position_bottom": true,
+            "width_min": 15,
+            "width_max": 15,
+            "storage": 0.3,
+            "has_worktop": false,
+            "allow_edge": false
+        },
+        {
+            "name": "cupboard1",
+            "type": "cupboard",
+            "zone": "storage",
+            "position_top": true,
+            "width_min": 10,
+            "width_max": 20,
+            "storage": 1.75,
+            "has_worktop": false,
+            "allow_multiple": true,
+            "allow_edge": true
+        },
+        {
+            "name": "corn1",
+            "type": "corner",
+            "zone": "storage",
+            "position_bottom": true,
+            "width_min": 21,
+            "width_max": 22,
+            "width_min2": 21,
+            "width_max2": 22,
+            "storage": 2,
+            "has_worktop": true,
+            "allow_edge": false,
+            "is_corner": true
+        },
+        {
+            "name": "corn3",
+            "type": "corner",
+            "zone": "storage",
+            "position_bottom": true,
+            "width_min": 25,
+            "width_max": 25,
+            "storage": 2,
+            "has_worktop": true,
+            "allow_edge": false,
+            "is_corner": true
+        }
+    ]
+}
