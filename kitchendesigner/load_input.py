@@ -57,7 +57,8 @@ def load_zones(zones_data: list[dict[str, Any]]) -> list[Zone]:
     for zone_data in zones_data:
         optimal_center = ((zone_data['optimal_center']['x'], zone_data['optimal_center']['y'])
                           if get_bool_field(zone_data, 'has_optimal_center') else None)
-        zone = Zone(zone_data['name'], get_bool_field(zone_data, 'is_optimized'), optimal_center)
+        color = zone_data['color'] if 'color' in zone_data else ''
+        zone = Zone(zone_data['name'], get_bool_field(zone_data, 'is_optimized'), optimal_center, color)
         zones.append(zone)
 
     return zones

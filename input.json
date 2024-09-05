@@ -118,14 +118,17 @@
     "zones": [
         {
             "name": "cleaning",
-            "is_optimized": true
+            "is_optimized": true,
+            "color": "#0077ff"
         },
         {
-            "name": "storage"
+            "name": "storage",
+            "color": "#914400"
         },
         {
             "name": "cooking",
-            "is_optimized": true
+            "is_optimized": true,
+            "color": "#cc0000"
         }
     ],
     "available_fixtures": [

@@ -36,10 +36,10 @@ def draw(kitchen: Kitchen) -> None:
             color = '#555555'
 
             if segment.fixture is not None:
-                match segment.fixture.zone:
-                    case 'cleaning': color = '#0077ff'
-                    case 'storage': color = '#914400'
-                    case 'cooking': color = '#cc0000'
+                zone_obj = next(z for z in kitchen.zones if z.name == segment.fixture.zone)
+
+                if zone_obj.color:
+                    color = zone_obj.color
 
             rectangle = patches.Rectangle((x, y), segment.width, part.depth, angle=angle,
                                           rotation_point=(rx, ry), fc=color+'33', ec=color+'77')

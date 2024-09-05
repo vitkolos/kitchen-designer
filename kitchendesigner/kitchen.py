@@ -125,6 +125,7 @@ class Zone:
     name: str
     is_optimized: bool
     optimal_center: tuple[float, float] | None
+    color: str
 
 
 @dataclass
