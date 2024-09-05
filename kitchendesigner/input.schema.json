@@ -40,6 +40,19 @@
                 "required": ["group", "left", "right"]
             }
         },
+        "corners": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "part1_name": { "type": "string" },
+                    "part1_left": { "type": "boolean" },
+                    "part2_name": { "type": "string" },
+                    "part2_left": { "type": "boolean" }
+                },
+                "required": ["part1_name", "part1_left", "part2_name", "part2_left"]
+            }
+        },
         "placement_rules": {
             "type": "array",
             "items": {
@@ -102,9 +115,12 @@
                     "position_bottom": { "type": "boolean" },
                     "width_min": { "type": "number" },
                     "width_max": { "type": "number" },
+                    "width_min2": { "type": "number" },
+                    "width_max2": { "type": "number" },
                     "storage": { "type": "number" },
                     "has_worktop": { "type": "boolean" },
                     "allow_edge": { "type": "boolean" },
+                    "is_corner": { "type": "boolean" },
                     "allow_multiple": { "type": "boolean" }
                 },
                 "required": ["name", "type", "zone", "width_min", "width_max"]

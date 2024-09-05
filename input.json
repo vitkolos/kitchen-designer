@@ -41,6 +41,14 @@
             "depth": 20
         }
     ],
+    "corners": [
+        {
+            "part1_name": "part1",
+            "part1_left": false,
+            "part2_name": "part3",
+            "part2_left": true
+        }
+    ],
     "zones": [
         {
             "name": "cleaning",
@@ -125,6 +133,32 @@
             "has_worktop": false,
             "allow_multiple": true,
             "allow_edge": true
+        },
+        {
+            "name": "corn1",
+            "type": "corner",
+            "zone": "storage",
+            "position_bottom": true,
+            "width_min": 21,
+            "width_max": 22,
+            "width_min2": 21,
+            "width_max2": 22,
+            "storage": 2,
+            "has_worktop": true,
+            "allow_edge": false,
+            "is_corner": true
+        },
+        {
+            "name": "corn3",
+            "type": "corner",
+            "zone": "storage",
+            "position_bottom": true,
+            "width_min": 25,
+            "width_max": 25,
+            "storage": 2,
+            "has_worktop": true,
+            "allow_edge": false,
+            "is_corner": true
         }
     ]
 }

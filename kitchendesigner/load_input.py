@@ -2,6 +2,7 @@ import json
 import jsonschema
 import pathlib
 import math
+import dataclasses
 from kitchen import *
 from typing import Any
 import find_solution
@@ -13,16 +14,7 @@ def load() -> Kitchen:
     fixtures = load_fictures(loaded_data['available_fixtures'], [zone.name for zone in zones])
     parts, segments = load_parts_segments(loaded_data['kitchen_parts'])
     walls = load_walls(get_list_field(loaded_data, 'walls'))
-    # FIXME
-    fixtures.append(c1 := Fixture("corn1", "corner", "storage", 21, 22, False, 2, True, False, True))
-    fixtures.append(Fixture("corn2", "corner", "storage", 21, 22, False, 2, True, False, True, None, c1))
-    fixtures.append(c3 := Fixture("corn3", "corner", "storage", 25, 25, False, 2, True, False, True))
-    fixtures.append(Fixture("corn4", "corner", "storage", 25, 25, False, 2, True, False, True, None, c3))
-    p1 = next(p for p in parts if p.name == 'part1')
-    p3 = next(p for p in parts if p.name == 'part3')
-    corners = [Corner(p1, False, p3, True)]
-    corners = []
-    # FIXME ^
+    corners = load_corners(get_list_field(loaded_data, 'corners'), parts)
     placement_rules = load_placement_rules(get_list_field(loaded_data, 'placement_rules'))
     relation_rules = load_relation_rules(get_list_field(loaded_data, 'relation_rules'))
     preprocess_fixtures_and_rules(fixtures, placement_rules)
@@ -75,40 +67,40 @@ def load_fictures(available_fixtures_data: list[dict[str, Any]], zones_str: list
     fixtures = []
     MULTIPLE_FIXTURE_COPY_COUNT = 3
 
-    def create_kitchen_fixture(fixture_data: dict[str, Any], is_top: bool) -> Fixture:
+    for fixture_data in available_fixtures_data:
+        position_top = get_bool_field(fixture_data, 'position_top')
+        position_bottom = get_bool_field(fixture_data, 'position_bottom')
+        allow_multiple = get_bool_field(fixture_data, 'allow_multiple')
+        is_corner = get_bool_field(fixture_data, 'is_corner')
         zone = fixture_data['zone']
+        storage = fixture_data['storage'] if 'storage' in fixture_data else 0
+        width_min = fixture_data['width_min']
+        width_max = fixture_data['width_max']
+        width_min2 = fixture_data['width_min2'] if 'width_min2' in fixture_data else width_min
+        width_max2 = fixture_data['width_max2'] if 'width_max2' in fixture_data else width_max
+        tall = position_top and position_bottom
+        fixture_copy_count = MULTIPLE_FIXTURE_COPY_COUNT if allow_multiple else 1
+        previous_fixture_top: Fixture | None
+        previous_fixture_bottom: Fixture | None
 
         if zone not in zones_str:
             raise Exception(f'zone "{zone}" was not defined')
 
-        storage = fixture_data['storage'] if 'storage' in fixture_data else 0
-        fixture = Fixture(fixture_data['name'], fixture_data['type'], zone, fixture_data['width_min'],
-                          fixture_data['width_max'], is_top, storage, get_bool_field(fixture_data, 'has_worktop'), get_bool_field(fixture_data, 'allow_edge'))
-        return fixture
-
-    for fixture_data in available_fixtures_data:
-        position_top = get_bool_field(fixture_data, 'position_top')
-        position_bottom = get_bool_field(fixture_data, 'position_bottom')
-        previous_fixture_top: Fixture | None
-        previous_fixture_bottom: Fixture | None
-
-        if get_bool_field(fixture_data, 'allow_multiple'):
-            fixture_copy_count = MULTIPLE_FIXTURE_COPY_COUNT
-        else:
-            fixture_copy_count = 1
+        if not position_top and not position_bottom:
+            continue
 
         for i in range(fixture_copy_count):
-            # create fixtures
-            kitchen_fixture_top = create_kitchen_fixture(fixture_data, is_top=True)
-            kitchen_fixture_bottom = create_kitchen_fixture(fixture_data, is_top=False)
+            kitchen_fixture_top = Fixture(fixture_data['name'], fixture_data['type'], zone, width_min, width_max,
+                                          position_top, storage, get_bool_field(fixture_data, 'has_worktop'), get_bool_field(fixture_data, 'allow_edge'), is_corner)
+            kitchen_fixture_bottom = dataclasses.replace(kitchen_fixture_top, is_top=False)
 
             if i > 0:
                 kitchen_fixture_top.name += f'_{i}'
                 kitchen_fixture_bottom.name += f'_{i}'
-                kitchen_fixture_top.older_sibling = None if position_bottom else previous_fixture_top
+                kitchen_fixture_top.older_sibling = None if tall else previous_fixture_top
                 kitchen_fixture_bottom.older_sibling = previous_fixture_bottom
 
-            if position_top and position_bottom:
+            if tall:
                 kitchen_fixture_top.name += 'T'
                 kitchen_fixture_bottom.name += 'B'
                 kitchen_fixture_top.complementary_fixture = kitchen_fixture_bottom
@@ -118,12 +110,23 @@ def load_fictures(available_fixtures_data: list[dict[str, Any]], zones_str: list
             previous_fixture_top = kitchen_fixture_top
             previous_fixture_bottom = kitchen_fixture_bottom
 
-            # append fixtures to lists
+            def corner_copy(fixture: Fixture) -> Fixture:
+                copy = dataclasses.replace(fixture, name=kitchen_fixture_bottom.name+'+',
+                                           width_min=width_min2, width_max=width_max2)
+                fixture.second_corner_fixture = copy
+                return copy
+
             if position_top:
                 fixtures.append(kitchen_fixture_top)
 
+                if is_corner:
+                    fixtures.append(corner_copy(kitchen_fixture_top))
+
             if position_bottom:
                 fixtures.append(kitchen_fixture_bottom)
+
+                if is_corner:
+                    fixtures.append(corner_copy(kitchen_fixture_bottom))
 
     return fixtures
 
@@ -173,6 +176,19 @@ def load_walls(walls_data: list[dict[str, Any]]) -> dict[int, Wall]:
         walls[group] = Wall(group, wall_data['left'], wall_data['right'])
 
     return walls
+
+
+def load_corners(corners_data: list[dict[str, Any]], kitchen_parts: list[KitchenPart]) -> list[Corner]:
+    # might raise exceptions if input is not correct
+    corners = []
+
+    for corner_data in corners_data:
+        part1 = next(p for p in kitchen_parts if p.name == corner_data['part1_name'])
+        part2 = next(p for p in kitchen_parts if p.name == corner_data['part2_name'])
+        corner = Corner(part1, corner_data['part1_left'], part2, corner_data['part2_left'])
+        corners.append(corner)
+
+    return corners
 
 
 def load_placement_rules(rules_data: list[dict[str, Any]]) -> list[PlacementRule]:
