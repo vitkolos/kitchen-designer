@@ -584,10 +584,6 @@ def set_constraints(kitchen: Kitchen, model: KitchenModel) -> None:
                 y_dist <= zone_y - optimal_y + M*(1-y_further),
             ]
             return get_clause(clauses, current_clause)
-        elif current_clause == 1:
-            return x_dist <= 0
-        elif current_clause == 2:
-            return y_dist <= 0
         else:
             return pyo.Constraint.Skip
 
@@ -966,27 +962,12 @@ def set_constraints(kitchen: Kitchen, model: KitchenModel) -> None:
 
 def set_objective(model: KitchenModel) -> None:
     def fitness(model: KitchenModel) -> Any:
-        # prefer more present fixtures
-        present_count = sum(model.present[fixture] for fixture in model.fixtures)
+        # maximize present fixtures
+        present = sum(model.present[fixture] for fixture in model.fixtures)
 
-        # prefer larger total width
-        width_coeff = (sum(model.widths[segment] for segment in model.segments) -
+        # maximize total width
+        width = (sum(model.widths[segment] for segment in model.segments) -
                        sum(part.width for part in model.parts)) / 2
-
-        # penalize width differences
-        width_patterns = sum(model.segments_width_not_same[segment] for segment in model.segments) * -1
-        width_patterns += sum(model.segments_pattern_aba[segment] for segment in model.segments)
-
-        # minimize zone distances
-        zone_dist = sum(model.fixtures_zone_x_dist[fixture] +
-                        model.fixtures_zone_y_dist[fixture] for fixture in model.fixtures) / -10
-
-        # minimize target distances
-        target_dist = sum(model.fixtures_target_x_dist[fixture] +
-                          model.fixtures_target_y_dist[fixture] for fixture in model.fixtures) / -10
-
-        # minimize distance from optimal centers
-        center_dist = sum(model.zones_x_dist[zone] + model.zones_y_dist[zone] for zone in model.zones) / -10
 
         # maximize storage
         storage = sum(model.present[fixture] * fixture.storage for fixture in model.fixtures if fixture.storage > 0) / 5
@@ -997,30 +978,43 @@ def set_objective(model: KitchenModel) -> None:
         # width can be multiplied instead of present?
         worktop += model.widest_worktop / 10
 
+        # minimize width differences
+        width_patterns = sum(model.segments_width_not_same[segment] for segment in model.segments) * -1
+        width_patterns += sum(model.segments_pattern_aba[segment] for segment in model.segments)
+
         # minimize vertical non-continuities
         intersections = sum(model.segment_intersects[s, t] for s in model.segments for t in model.segments) / -5
         intersections += sum(model.part_segment_intersects[p, s] for s in model.segments for p in model.parts) / -5
 
+        # minimize zone distances
+        zone_dist = sum(model.fixtures_zone_x_dist[fixture] +
+                        model.fixtures_zone_y_dist[fixture] for fixture in model.fixtures) / -10
+
+        # minimize distance from optimal centers
+        center_dist = sum(model.zones_x_dist[zone] + model.zones_y_dist[zone] for zone in model.zones) / -10
+
+        # minimize target distances
+        target_dist = sum(model.fixtures_target_x_dist[fixture] +
+                          model.fixtures_target_y_dist[fixture] for fixture in model.fixtures) / -10
+
         # minimize fixtures too close to wall
         close_to_wall = sum(model.fixtures_close_to_wall[fixture] for fixture in model.fixtures) / -1
 
-        return (present_count + width_coeff + width_patterns + target_dist + zone_dist + center_dist + storage + worktop
+        return (present + width + width_patterns + target_dist + zone_dist + center_dist + storage + worktop
                 + intersections + close_to_wall)
 
     model.fitness = pyo.Objective(rule=fitness, sense=pyo.maximize)
 
 
 def deactivate_components(model: KitchenModel) -> None:
-    # MULTIPLE SAME FIXTURES RULE
-    model.sort_multiple_same_fixtures.deactivate()
     # WIDTH DIFFERENCE RULES
-    model.get_width_difference.deactivate()
-    model.get_width_difference_penult.deactivate()
+    # model.get_width_difference.deactivate()  # cheap
+    model.get_width_difference_penult.deactivate()  # expensive
     # ZONE RULES
-    model.get_zone_coordinates_sync.deactivate()
-    model.get_zone_coordinates_sums.deactivate()
-    model.get_fixture_zone_distance.deactivate()
-    model.get_zone_center_distance.deactivate()
+    # model.get_zone_coordinates_sync.deactivate()
+    # model.get_zone_coordinates_sums.deactivate()
+    model.get_fixture_zone_distance.deactivate()  # expensive
+    # model.get_zone_center_distance.deactivate()  # cheap when no optimum
     # VERTICAL CONTINUITY RULES
     model.vertical_continuity_segments_beginning.deactivate()
     model.vertical_continuity_part_ending.deactivate()
@@ -1030,26 +1024,26 @@ def deactivate_components(model: KitchenModel) -> None:
     model.different_implies_not_same.deactivate()
     model.is_penultimate_width_similar.deactivate()
     model.is_aba_pattern.deactivate()
-    # RELATION RULES
-    model.get_fixture_target_distance.deactivate()
-    model.ensure_min_distance.deactivate()
-    model.wall_distance.deactivate()
-    model.is_wide_enough.deactivate()
-    model.at_least_one_wide.deactivate()
+    # RELATION RULES: all cheap when not in use
+    # model.get_fixture_target_distance.deactivate()
+    # model.ensure_min_distance.deactivate()
+    # model.wall_distance.deactivate()
+    # model.is_wide_enough.deactivate()
+    # model.at_least_one_wide.deactivate()
     # WORKTOP RULES
     model.worktop_width_unused_segments.deactivate()
     model.worktop_width_fixtures.deactivate()
     model.worktop_max_segments.deactivate()
     model.worktop_best_segment.deactivate()
-    model.worktop_required.deactivate()
-    # CORNER RULES
-    model.corner_not_empty.deactivate()
-    model.segment_check_corner.deactivate()
-    model.segment_to_one_corner.deactivate()
-    model.fixture_in_corner.deactivate()
-    model.corner_order.deactivate()
-    model.get_corner_fixture.deactivate()
-    model.sync_corner_fixtures.deactivate()
+    # model.worktop_required.deactivate()  # cheap if not used
+    # CORNER RULES: all cheap when not in use
+    # model.corner_not_empty.deactivate()
+    # model.segment_check_corner.deactivate()
+    # model.segment_to_one_corner.deactivate()
+    # model.fixture_in_corner.deactivate()
+    # model.corner_order.deactivate()
+    # model.get_corner_fixture.deactivate()
+    # model.sync_corner_fixtures.deactivate()
 
 
 def find_model(model: KitchenModel, args: Args) -> None:

@@ -32,7 +32,7 @@
             "is_top": false,
             "position": {
                 "x": 60,
-                "y": 80,
+                "y": 60,
                 "angle": -90,
                 "group_number": 2,
                 "group_offset": 0
@@ -135,6 +135,18 @@
             "width_max": 20,
             "storage": 1.75,
             "has_worktop": false,
+            "allow_multiple": true,
+            "allow_edge": true
+        },
+        {
+            "name": "cupboardA",
+            "type": "cupboard",
+            "zone": "storage",
+            "position_bottom": true,
+            "width_min": 10,
+            "width_max": 30,
+            "storage": 2,
+            "has_worktop": true,
             "allow_multiple": true,
             "allow_edge": true
         },

@@ -5,21 +5,20 @@ import math
 import dataclasses
 from kitchen import *
 from typing import Any
-import find_solution
 from utility_functions import attr_matches
 
 
 def load(file_name: str) -> Kitchen:
     loaded_data = load_data_from_files(file_name)
     zones = load_zones(loaded_data['zones'])
-    fixtures = load_fictures(loaded_data['available_fixtures'], [zone.name for zone in zones])
+    fixtures = load_fixtures(loaded_data['available_fixtures'], [zone.name for zone in zones])
     constants = load_constants(loaded_data['constants'])
     parts, segments = load_parts_segments(loaded_data['kitchen_parts'], constants)
     walls = load_walls(get_list_field(loaded_data, 'walls'))
     corners = load_corners(get_list_field(loaded_data, 'corners'), parts)
     placement_rules = load_placement_rules(get_list_field(loaded_data, 'placement_rules'))
     relation_rules = load_relation_rules(get_list_field(loaded_data, 'relation_rules'))
-    preprocess_fixtures_and_rules(fixtures, placement_rules)
+    remove_fixtures(fixtures, placement_rules, corners)
     groups = list(set(part.position.group_number for part in parts))
     return Kitchen(groups, parts, segments, walls, corners, placement_rules, relation_rules, constants, zones, fixtures)
 
@@ -76,7 +75,7 @@ def load_constants(constants_data: dict[str, float]) -> Constants:
     constants.width_penult_similar_tolerance = constants_data['width_penult_similar_tolerance']
     return constants
 
-def load_fictures(available_fixtures_data: list[dict[str, Any]], zones_str: list[str]) -> list[Fixture]:
+def load_fixtures(available_fixtures_data: list[dict[str, Any]], zones_str: list[str]) -> list[Fixture]:
     fixtures = []
     MULTIPLE_FIXTURE_COPY_COUNT = 3
 
@@ -249,9 +248,12 @@ def load_relation_rules(rules_data: list[dict[str, Any]]) -> RelationRules:
     return relation_rules
 
 
-def preprocess_fixtures_and_rules(fixtures: list[Fixture], rules: list[PlacementRule]) -> None:
+def remove_fixtures(fixtures: list[Fixture], rules: list[PlacementRule], corners: list[Corner]) -> None:
     for rule in rules:
         if rule.type == 'exclude' and rule.area == 'kitchen':
             fixtures[:] = [fixture for fixture in fixtures if not attr_matches(rule, fixture)]
 
     rules[:] = [rule for rule in rules if rule.type != 'exclude' or rule.area != 'kitchen']
+
+    if len(corners) == 0:
+        fixtures[:] = [fixture for fixture in fixtures if not fixture.is_corner]
