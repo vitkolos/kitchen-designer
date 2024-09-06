@@ -5,15 +5,6 @@ from process_args import Args
 import pyomo.environ as pyo
 import math
 
-min_fixture_width = 10
-max_fixture_width = 100
-max_canvas_size = 800
-max_segment_count = 100
-vertical_continuity_tolerance = 0.1
-width_same_tolerance = 1
-width_different_tolerance = 5
-width_penult_similar_tolerance = 2
-
 
 def solve(kitchen: Kitchen, args: Args) -> None:
     model = KitchenModel(kitchen)
@@ -25,6 +16,10 @@ def solve(kitchen: Kitchen, args: Args) -> None:
 
 class KitchenModel(pyo.ConcreteModel):  # type: ignore[misc]
     def __init__(model: pyo.ConcreteModel, kitchen: Kitchen) -> None:
+        max_fixture_width = kitchen.constants.max_fixture_width
+        max_canvas_size = kitchen.constants.max_canvas_size
+        max_segment_count = kitchen.constants.max_segment_count
+
         super().__init__()
 
         # sets
@@ -121,6 +116,15 @@ class KitchenModel(pyo.ConcreteModel):  # type: ignore[misc]
 
 
 def set_constraints(kitchen: Kitchen, model: KitchenModel) -> None:
+    min_fixture_width = kitchen.constants.min_fixture_width
+    max_fixture_width = kitchen.constants.max_fixture_width
+    max_canvas_size = kitchen.constants.max_canvas_size
+    max_segment_count = kitchen.constants.max_segment_count
+    vertical_continuity_tolerance = kitchen.constants.vertical_continuity_tolerance
+    width_same_tolerance = kitchen.constants.width_same_tolerance
+    width_different_tolerance = kitchen.constants.width_different_tolerance
+    width_penult_similar_tolerance = kitchen.constants.width_penult_similar_tolerance
+
     clause_count = 0
 
     def get_clause(clauses: list[Any], current_clause: int) -> Any:

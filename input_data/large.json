@@ -115,6 +115,15 @@
             "attribute_value": "fridge"
         }
     ],
+    "constants": {
+        "min_fixture_width": 20,
+        "max_fixture_width": 120,
+        "max_canvas_size": 800,
+        "vertical_continuity_tolerance": 0.5,
+        "width_same_tolerance": 2,
+        "width_different_tolerance": 10,
+        "width_penult_similar_tolerance": 4
+    },
     "zones": [
         {
             "name": "cleaning",

@@ -13,14 +13,15 @@ def load(file_name: str) -> Kitchen:
     loaded_data = load_data_from_files(file_name)
     zones = load_zones(loaded_data['zones'])
     fixtures = load_fictures(loaded_data['available_fixtures'], [zone.name for zone in zones])
-    parts, segments = load_parts_segments(loaded_data['kitchen_parts'])
+    constants = load_constants(loaded_data['constants'])
+    parts, segments = load_parts_segments(loaded_data['kitchen_parts'], constants)
     walls = load_walls(get_list_field(loaded_data, 'walls'))
     corners = load_corners(get_list_field(loaded_data, 'corners'), parts)
     placement_rules = load_placement_rules(get_list_field(loaded_data, 'placement_rules'))
     relation_rules = load_relation_rules(get_list_field(loaded_data, 'relation_rules'))
     preprocess_fixtures_and_rules(fixtures, placement_rules)
     groups = list(set(part.position.group_number for part in parts))
-    return Kitchen(groups, parts, segments, walls, corners, placement_rules, relation_rules, zones, fixtures)
+    return Kitchen(groups, parts, segments, walls, corners, placement_rules, relation_rules, constants, zones, fixtures)
 
 
 def get_list_field(data_dict: dict[str, list[dict[str, Any]]], key: str) -> list[dict[str, Any]]:
@@ -64,6 +65,16 @@ def load_zones(zones_data: list[dict[str, Any]]) -> list[Zone]:
 
     return zones
 
+def load_constants(constants_data: dict[str, float]) -> Constants:
+    constants = Constants()
+    constants.min_fixture_width = constants_data['min_fixture_width']
+    constants.max_fixture_width = constants_data['max_fixture_width']
+    constants.max_canvas_size = constants_data['max_canvas_size']
+    constants.vertical_continuity_tolerance = constants_data['vertical_continuity_tolerance']
+    constants.width_same_tolerance = constants_data['width_same_tolerance']
+    constants.width_different_tolerance = constants_data['width_different_tolerance']
+    constants.width_penult_similar_tolerance = constants_data['width_penult_similar_tolerance']
+    return constants
 
 def load_fictures(available_fixtures_data: list[dict[str, Any]], zones_str: list[str]) -> list[Fixture]:
     fixtures = []
@@ -133,7 +144,7 @@ def load_fictures(available_fixtures_data: list[dict[str, Any]], zones_str: list
     return fixtures
 
 
-def load_parts_segments(kitchen_parts_data: list[dict[str, Any]]) -> tuple[list[KitchenPart], list[Segment]]:
+def load_parts_segments(kitchen_parts_data: list[dict[str, Any]], constants: Constants) -> tuple[list[KitchenPart], list[Segment]]:
     segment: Segment | None = None
     previous_segment: Segment | None = None
 
@@ -146,7 +157,7 @@ def load_parts_segments(kitchen_parts_data: list[dict[str, Any]]) -> tuple[list[
         is_top: bool = get_bool_field(part_data, 'is_top')
         edge_left: bool = get_bool_field(part_data, 'edge_left')
         edge_right: bool = get_bool_field(part_data, 'edge_right')
-        segment_count = math.ceil(width/find_solution.min_fixture_width)
+        segment_count = math.ceil(width/constants.min_fixture_width)
         part_segments: list[Segment] = []
         # TODO: 1) check that the entire kitchen can fit in positive coordinates
         #       2) check that group numbers are integers
@@ -167,6 +178,7 @@ def load_parts_segments(kitchen_parts_data: list[dict[str, Any]]) -> tuple[list[
             part_segments.append(segment)
             kitchen_segments.append(segment)
 
+    constants.max_segment_count = segment_number
     return parts, kitchen_segments
 
 

@@ -84,6 +84,19 @@
                 "required": ["rule_type", "fixture_type"]
             }
         },
+        "constants": {
+            "type": "object",
+            "properties": {
+                "min_fixture_width": { "type": "number" },
+                "max_fixture_width": { "type": "number" },
+                "max_canvas_size": { "type": "number" },
+                "vertical_continuity_tolerance": { "type": "number" },
+                "width_same_tolerance": { "type": "number" },
+                "width_different_tolerance": { "type": "number" },
+                "width_penult_similar_tolerance": { "type": "number" }
+            },
+            "required": ["min_fixture_width", "max_fixture_width", "max_canvas_size", "vertical_continuity_tolerance", "width_same_tolerance", "width_different_tolerance", "width_penult_similar_tolerance"]
+        },
         "zones": {
             "type": "array",
             "items": {
@@ -128,5 +141,5 @@
             }
         }
     },
-    "required": ["kitchen_parts", "zones", "available_fixtures"]
+    "required": ["kitchen_parts", "constants", "zones", "available_fixtures"]
 }

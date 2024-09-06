@@ -41,14 +41,15 @@
             "depth": 20
         }
     ],
-    "corners": [
-        {
-            "part1_name": "part1",
-            "part1_left": false,
-            "part2_name": "part3",
-            "part2_left": true
-        }
-    ],
+    "constants": {
+        "min_fixture_width": 10,
+        "max_fixture_width": 100,
+        "max_canvas_size": 800,
+        "vertical_continuity_tolerance": 0.1,
+        "width_same_tolerance": 1,
+        "width_different_tolerance": 5,
+        "width_penult_similar_tolerance": 2
+    },
     "zones": [
         {
             "name": "cleaning",

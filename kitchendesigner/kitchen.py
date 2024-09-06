@@ -129,6 +129,18 @@ class Zone:
 
 
 @dataclass
+class Constants:
+    min_fixture_width: float = 0
+    max_fixture_width: float = 0
+    max_canvas_size: float = 0
+    vertical_continuity_tolerance: float = 0
+    width_same_tolerance: float = 0
+    width_different_tolerance: float = 0
+    width_penult_similar_tolerance: float = 0
+    max_segment_count: int = 0
+
+
+@dataclass
 class Kitchen:
     groups: list[int]
     parts: list[KitchenPart]
@@ -137,5 +149,6 @@ class Kitchen:
     corners: list[Corner]
     rules: list[PlacementRule]
     relation_rules: RelationRules
+    constants: Constants
     zones: list[Zone]
     fixtures: list[Fixture]
