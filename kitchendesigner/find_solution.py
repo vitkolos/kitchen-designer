@@ -962,7 +962,7 @@ def set_constraints(kitchen: Kitchen, model: KitchenModel) -> None:
 def set_objective(model: KitchenModel) -> None:
     def fitness(model: KitchenModel) -> Any:
         # maximize present fixtures
-        present = sum(model.present[fixture] for fixture in model.fixtures) * 1
+        present = sum(model.present[fixture] for fixture in model.fixtures) * 10
 
         # maximize total width
         width = (sum(model.widths[segment] for segment in model.segments) -
@@ -978,7 +978,7 @@ def set_objective(model: KitchenModel) -> None:
 
         # minimize width differences
         width_patterns = sum(model.segments_width_not_same[segment] for segment in model.segments) * -10
-        width_patterns += sum(model.segments_pattern_aba[segment] for segment in model.segments) * 1
+        width_patterns += sum(model.segments_pattern_aba[segment] for segment in model.segments) * 10
 
         # minimize vertical non-continuities
         intersections = sum(model.segment_intersects[s, t] for s in model.segments for t in model.segments) * -2
