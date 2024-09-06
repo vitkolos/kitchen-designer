@@ -1,9 +1,13 @@
 from typing import Any, Iterator
 import pyomo.environ as pyo
 from pyomo.core.base.var import VarData
+from process_args import Args
 
 
-def print_structure(model: pyo.Model) -> None:
+def print_structure(model: pyo.Model, args: Args) -> None:
+    if not args.structure:
+        return
+
     for component in model.component_objects():
         if isinstance(component, pyo.Set):
             continue

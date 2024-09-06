@@ -2,14 +2,19 @@ from kitchen import *
 from typing import Any, Iterable
 from utility_functions import attr_matches
 from process_args import Args
+import model_structure
 import pyomo.environ as pyo
 import math
+
+SIN_COS_DECIMAL_PLACES = 5
 
 
 def solve(kitchen: Kitchen, args: Args) -> None:
     model = KitchenModel(kitchen)
     set_constraints(kitchen, model)
     set_objective(model)
+    deactivate_components(model)
+    model_structure.print_structure(model, args)
     find_model(model, args)
     save_result(kitchen, model)
 
@@ -231,8 +236,8 @@ def set_constraints(kitchen: Kitchen, model: KitchenModel) -> None:
 
     def get_segments_x(model: KitchenModel, segment: Segment) -> Any:
         """determines x coordinate of the *center* of the segment"""
-        sin_alpha = math.sin(math.radians(segment.part.position.angle))
-        cos_alpha = math.cos(math.radians(segment.part.position.angle))
+        sin_alpha = round(math.sin(math.radians(segment.part.position.angle)), SIN_COS_DECIMAL_PLACES)
+        cos_alpha = round(math.cos(math.radians(segment.part.position.angle)), SIN_COS_DECIMAL_PLACES)
 
         if segment.is_first:
             horizontal = model.parts_padding[segment.part] + model.widths[segment]/2
@@ -245,8 +250,8 @@ def set_constraints(kitchen: Kitchen, model: KitchenModel) -> None:
 
     def get_segments_y(model: KitchenModel, segment: Segment) -> Any:
         """determines y coordinate of the *center* of the segment"""
-        sin_alpha = math.sin(math.radians(segment.part.position.angle))
-        cos_alpha = math.cos(math.radians(segment.part.position.angle))
+        sin_alpha = round(math.sin(math.radians(segment.part.position.angle)), SIN_COS_DECIMAL_PLACES)
+        cos_alpha = round(math.cos(math.radians(segment.part.position.angle)), SIN_COS_DECIMAL_PLACES)
 
         if segment.is_first:
             horizontal = model.parts_padding[segment.part] + model.widths[segment]/2
@@ -994,11 +999,11 @@ def set_objective(model: KitchenModel) -> None:
         center_dist = sum(model.zones_x_dist[zone] + model.zones_y_dist[zone] for zone in model.zones) / -10
 
         # maximize storage
-        storage = sum(model.present[fixture] * fixture.storage for fixture in model.fixtures) / 5
+        storage = sum(model.present[fixture] * fixture.storage for fixture in model.fixtures if fixture.storage > 0) / 5
         # width can be multiplied instead of present?
 
         # maximize worktop
-        worktop = sum(model.present[fixture] * int(fixture.has_worktop) for fixture in model.fixtures) / 10
+        worktop = sum(model.present[fixture] for fixture in model.fixtures if fixture.has_worktop) / 10
         # width can be multiplied instead of present?
         worktop += model.widest_worktop / 10
 
@@ -1014,6 +1019,9 @@ def set_objective(model: KitchenModel) -> None:
 
     model.fitness = pyo.Objective(rule=fitness, sense=pyo.maximize)
 
+def deactivate_components(model: KitchenModel) -> None:
+    ...
+    # model.corner_not_empty.deactivate()
 
 def find_model(model: KitchenModel, args: Args) -> None:
     SUPPORTED_SOLVERS = ['glpk', 'cbc', 'gurobi_direct']
