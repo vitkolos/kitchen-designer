@@ -139,6 +139,10 @@ class Constants:
     width_penult_similar_tolerance: float = 0
     max_segment_count: int = 0
 
+@dataclass
+class Preferences:
+    storage: float = 1
+    worktop: float = 1
 
 @dataclass
 class Kitchen:
@@ -147,8 +151,9 @@ class Kitchen:
     segments: list[Segment]
     walls: dict[int, Wall]
     corners: list[Corner]
-    rules: list[PlacementRule]
+    placement_rules: list[PlacementRule]
     relation_rules: RelationRules
+    preferences: Preferences
     constants: Constants
     zones: list[Zone]
     fixtures: list[Fixture]

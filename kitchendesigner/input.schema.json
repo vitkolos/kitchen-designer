@@ -84,6 +84,13 @@
                 "required": ["rule_type", "fixture_type"]
             }
         },
+        "preferences": {
+            "type": "object",
+            "properties": {
+                "storage": { "type": "number" },
+                "worktop": { "type": "number" }
+            }
+        },
         "constants": {
             "type": "object",
             "properties": {

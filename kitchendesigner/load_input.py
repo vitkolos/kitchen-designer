@@ -18,9 +18,11 @@ def load(file_name: str) -> Kitchen:
     corners = load_corners(get_list_field(loaded_data, 'corners'), parts)
     placement_rules = load_placement_rules(get_list_field(loaded_data, 'placement_rules'))
     relation_rules = load_relation_rules(get_list_field(loaded_data, 'relation_rules'))
+    preferences_data = loaded_data['preferences'] if 'preferences' in loaded_data else {}
+    preferences = load_preferences(preferences_data)
     remove_fixtures(fixtures, placement_rules, corners)
     groups = list(set(part.position.group_number for part in parts))
-    return Kitchen(groups, parts, segments, walls, corners, placement_rules, relation_rules, constants, zones, fixtures)
+    return Kitchen(groups, parts, segments, walls, corners, placement_rules, relation_rules, preferences, constants, zones, fixtures)
 
 
 def get_list_field(data_dict: dict[str, list[dict[str, Any]]], key: str) -> list[dict[str, Any]]:
@@ -246,6 +248,17 @@ def load_relation_rules(rules_data: list[dict[str, Any]]) -> RelationRules:
                 relation_rules.one_wide[fixture_type] = rule_data['length']
 
     return relation_rules
+
+def load_preferences(preferences_data: dict[str, Any]) -> Preferences:
+    preferences = Preferences()
+
+    def get_preference(name: str) -> None:
+        if name in preferences_data:
+            setattr(preferences, name, preferences_data[name])
+
+    get_preference('storage')
+    get_preference('worktop')
+    return preferences
 
 
 def remove_fixtures(fixtures: list[Fixture], rules: list[PlacementRule], corners: list[Corner]) -> None:

@@ -115,6 +115,9 @@
             "attribute_value": "fridge"
         }
     ],
+    "preferences": {
+        "worktop": 4
+    },
     "constants": {
         "min_fixture_width": 20,
         "max_fixture_width": 120,

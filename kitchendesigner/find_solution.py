@@ -26,12 +26,16 @@ class KitchenModel(pyo.ConcreteModel):  # type: ignore[misc]
 
         super().__init__()
 
+        # parameters
+        model.param_storage = pyo.Param(initialize=kitchen.preferences.storage)
+        model.param_worktop = pyo.Param(initialize=kitchen.preferences.worktop)
+
         # sets
         model.fixtures: Iterable[Fixture] = pyo.Set(initialize=kitchen.fixtures)
         model.segments: Iterable[Segment] = pyo.Set(initialize=kitchen.segments)
         model.parts: Iterable[KitchenPart] = pyo.Set(initialize=kitchen.parts)
         model.groups: Iterable[int] = pyo.Set(initialize=kitchen.groups)
-        model.rules_all: Iterable[PlacementRule] = pyo.Set(initialize=kitchen.rules)
+        model.rules_all: Iterable[PlacementRule] = pyo.Set(initialize=kitchen.placement_rules)
         model.rules_section: Iterable[PlacementRule] = pyo.Set(
             initialize=model.rules_all, filter=lambda _, rule: rule.area == 'group_section')
         model.zones: Iterable[str] = pyo.Set(initialize=[zone.name for zone in kitchen.zones if zone.is_optimized])
@@ -970,11 +974,13 @@ def set_objective(model: KitchenModel) -> None:
 
         # maximize storage (width can be multiplied instead of present?)
         storage = sum(model.present[fixture] * fixture.storage for fixture in model.fixtures if fixture.storage > 0) * 2
+        storage *= model.param_storage
 
         # maximize worktop (width can be multiplied instead of present?)
         worktop = sum(model.present[fixture] for fixture in model.fixtures if fixture.has_worktop) * 1
         # maximize the widest worktop; expensive (7)
         worktop += model.widest_worktop * 1
+        worktop *= model.param_worktop
 
         # minimize width differences
         width_patterns = sum(model.segments_width_not_same[segment] for segment in model.segments) * -10
