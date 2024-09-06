@@ -1,0 +1,107 @@
+{
+    "part1": {
+        "padding": 0.0,
+        "fixtures": [
+            {
+                "fixture": "cupboardA",
+                "width": 50.0
+            },
+            {
+                "fixture": "cupboardA_1",
+                "width": 50.25
+            },
+            {
+                "fixture": "cupboardA_2",
+                "width": 50.25
+            },
+            {
+                "fixture": "dishwasher1",
+                "width": 60.0
+            },
+            {
+                "fixture": "sink1",
+                "width": 50.0
+            },
+            {
+                "fixture": "cupboardT_2B",
+                "width": 64.0
+            },
+            {
+                "fixture": "stove1B",
+                "width": 64.0
+            },
+            {
+                "fixture": "corner1",
+                "width": 88.0
+            }
+        ]
+    },
+    "part2": {
+        "padding": 0.0,
+        "fixtures": [
+            {
+                "fixture": "corner1+",
+                "width": 89.5
+            },
+            {
+                "fixture": "oven1B",
+                "width": 60.0
+            },
+            {
+                "fixture": "fridge1B",
+                "width": 60.0
+            }
+        ]
+    },
+    "part3": {
+        "padding": 0.5,
+        "fixtures": [
+            {
+                "fixture": "cupboard1",
+                "width": 50.0
+            }
+        ]
+    },
+    "part4": {
+        "padding": 4.0,
+        "fixtures": [
+            {
+                "fixture": "cupboardT_2T",
+                "width": 64.0
+            },
+            {
+                "fixture": "stove1T",
+                "width": 64.0
+            },
+            {
+                "fixture": "cupboard1_1",
+                "width": 43.0
+            },
+            {
+                "fixture": "corner2",
+                "width": 45.0
+            }
+        ]
+    },
+    "part5": {
+        "padding": 0.0,
+        "fixtures": [
+            {
+                "fixture": "corner2+",
+                "width": 45.75
+            },
+            {
+                "fixture": "cupboard1_2",
+                "width": 43.75
+            },
+            {
+                "fixture": "oven1T",
+                "width": 60.0
+            },
+            {
+                "fixture": "fridge1T",
+                "width": 60.0
+            }
+        ]
+    }
+}

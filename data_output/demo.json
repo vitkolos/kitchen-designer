@@ -1,0 +1,53 @@
+{
+    "part1": {
+        "padding": 0.0,
+        "fixtures": [
+            {
+                "fixture": "stove2",
+                "width": 15.0
+            },
+            {
+                "fixture": "cupboardA",
+                "width": 15.0
+            },
+            {
+                "fixture": "fridge1B",
+                "width": 15.0
+            },
+            {
+                "fixture": "cupboardA_1",
+                "width": 15.0
+            }
+        ]
+    },
+    "part2": {
+        "padding": 0.0,
+        "fixtures": [
+            {
+                "fixture": "cupboard1_1",
+                "width": 10.0
+            },
+            {
+                "fixture": "fridge1T",
+                "width": 15.0
+            },
+            {
+                "fixture": "cupboard1_2",
+                "width": 15.0
+            }
+        ]
+    },
+    "part3": {
+        "padding": 0.0,
+        "fixtures": [
+            {
+                "fixture": "sink1",
+                "width": 30.0
+            },
+            {
+                "fixture": "cupboardA_2",
+                "width": 30.0
+            }
+        ]
+    }
+}
