@@ -13,7 +13,6 @@ def solve(kitchen: Kitchen, args: Args) -> None:
     model = KitchenModel(kitchen)
     set_constraints(kitchen, model)
     set_objective(model)
-    deactivate_components(model)
     model_structure.print_structure(model, args)
     find_model(model, args)
     save_result(kitchen, model)
@@ -963,87 +962,46 @@ def set_constraints(kitchen: Kitchen, model: KitchenModel) -> None:
 def set_objective(model: KitchenModel) -> None:
     def fitness(model: KitchenModel) -> Any:
         # maximize present fixtures
-        present = sum(model.present[fixture] for fixture in model.fixtures)
+        present = sum(model.present[fixture] for fixture in model.fixtures) * 1
 
         # maximize total width
         width = (sum(model.widths[segment] for segment in model.segments) -
-                       sum(part.width for part in model.parts)) / 2
+                 sum(part.width for part in model.parts)) * 5
 
-        # maximize storage
-        storage = sum(model.present[fixture] * fixture.storage for fixture in model.fixtures if fixture.storage > 0) / 5
-        # width can be multiplied instead of present?
+        # maximize storage (width can be multiplied instead of present?)
+        storage = sum(model.present[fixture] * fixture.storage for fixture in model.fixtures if fixture.storage > 0) * 2
 
-        # maximize worktop
-        worktop = sum(model.present[fixture] for fixture in model.fixtures if fixture.has_worktop) / 10
-        # width can be multiplied instead of present?
-        worktop += model.widest_worktop / 10
+        # maximize worktop (width can be multiplied instead of present?)
+        worktop = sum(model.present[fixture] for fixture in model.fixtures if fixture.has_worktop) * 1
+        # maximize the widest worktop; expensive (7)
+        worktop += model.widest_worktop * 1
 
         # minimize width differences
-        width_patterns = sum(model.segments_width_not_same[segment] for segment in model.segments) * -1
-        width_patterns += sum(model.segments_pattern_aba[segment] for segment in model.segments)
+        width_patterns = sum(model.segments_width_not_same[segment] for segment in model.segments) * -10
+        width_patterns += sum(model.segments_pattern_aba[segment] for segment in model.segments) * 1
 
         # minimize vertical non-continuities
-        intersections = sum(model.segment_intersects[s, t] for s in model.segments for t in model.segments) / -5
-        intersections += sum(model.part_segment_intersects[p, s] for s in model.segments for p in model.parts) / -5
+        intersections = sum(model.segment_intersects[s, t] for s in model.segments for t in model.segments) * -2
+        intersections += sum(model.part_segment_intersects[p, s] for s in model.segments for p in model.parts) * -2
 
-        # minimize zone distances
+        # minimize zone distances; expensive (3)
         zone_dist = sum(model.fixtures_zone_x_dist[fixture] +
-                        model.fixtures_zone_y_dist[fixture] for fixture in model.fixtures) / -10
+                        model.fixtures_zone_y_dist[fixture] for fixture in model.fixtures) * -1
 
         # minimize distance from optimal centers
-        center_dist = sum(model.zones_x_dist[zone] + model.zones_y_dist[zone] for zone in model.zones) / -10
+        center_dist = sum(model.zones_x_dist[zone] + model.zones_y_dist[zone] for zone in model.zones) * -1
 
         # minimize target distances
         target_dist = sum(model.fixtures_target_x_dist[fixture] +
-                          model.fixtures_target_y_dist[fixture] for fixture in model.fixtures) / -10
+                          model.fixtures_target_y_dist[fixture] for fixture in model.fixtures) * -1
 
         # minimize fixtures too close to wall
-        close_to_wall = sum(model.fixtures_close_to_wall[fixture] for fixture in model.fixtures) / -1
+        close_to_wall = sum(model.fixtures_close_to_wall[fixture] for fixture in model.fixtures) * -10
 
         return (present + width + width_patterns + target_dist + zone_dist + center_dist + storage + worktop
                 + intersections + close_to_wall)
 
     model.fitness = pyo.Objective(rule=fitness, sense=pyo.maximize)
-
-
-def deactivate_components(model: KitchenModel) -> None:
-    # WIDTH DIFFERENCE RULES
-    # model.get_width_difference.deactivate()  # cheap
-    model.get_width_difference_penult.deactivate()  # expensive
-    # ZONE RULES
-    # model.get_zone_coordinates_sync.deactivate()
-    # model.get_zone_coordinates_sums.deactivate()
-    model.get_fixture_zone_distance.deactivate()  # expensive
-    # model.get_zone_center_distance.deactivate()  # cheap when no optimum
-    # VERTICAL CONTINUITY RULES
-    model.vertical_continuity_segments_beginning.deactivate()
-    model.vertical_continuity_part_ending.deactivate()
-    # WIDTH PATTERN RULES
-    model.is_previous_width_not_same.deactivate()
-    model.is_previous_width_different.deactivate()
-    model.different_implies_not_same.deactivate()
-    model.is_penultimate_width_similar.deactivate()
-    model.is_aba_pattern.deactivate()
-    # RELATION RULES: all cheap when not in use
-    # model.get_fixture_target_distance.deactivate()
-    # model.ensure_min_distance.deactivate()
-    # model.wall_distance.deactivate()
-    # model.is_wide_enough.deactivate()
-    # model.at_least_one_wide.deactivate()
-    # WORKTOP RULES
-    model.worktop_width_unused_segments.deactivate()
-    model.worktop_width_fixtures.deactivate()
-    model.worktop_max_segments.deactivate()
-    model.worktop_best_segment.deactivate()
-    # model.worktop_required.deactivate()  # cheap if not used
-    # CORNER RULES: all cheap when not in use
-    # model.corner_not_empty.deactivate()
-    # model.segment_check_corner.deactivate()
-    # model.segment_to_one_corner.deactivate()
-    # model.fixture_in_corner.deactivate()
-    # model.corner_order.deactivate()
-    # model.get_corner_fixture.deactivate()
-    # model.sync_corner_fixtures.deactivate()
 
 
 def find_model(model: KitchenModel, args: Args) -> None:
