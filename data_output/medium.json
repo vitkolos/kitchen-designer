@@ -1,0 +1,90 @@
+{
+    "part1": {
+        "padding": 0.0,
+        "fixtures": [
+            {
+                "fixture": "dishwasher1",
+                "width": 60.0
+            },
+            {
+                "fixture": "sink1",
+                "width": 58.0
+            },
+            {
+                "fixture": "cupboardT_2B",
+                "width": 56.0
+            },
+            {
+                "fixture": "cupboardB_2",
+                "width": 43.0
+            },
+            {
+                "fixture": "stove1B",
+                "width": 60.0
+            }
+        ]
+    },
+    "part2": {
+        "padding": 0.0,
+        "fixtures": [
+            {
+                "fixture": "narrow1",
+                "width": 25.0
+            },
+            {
+                "fixture": "cupboard1",
+                "width": 46.5
+            },
+            {
+                "fixture": "cupboard1_1",
+                "width": 46.5
+            },
+            {
+                "fixture": "cupboardT_2T",
+                "width": 56.0
+            },
+            {
+                "fixture": "cupboard1_2",
+                "width": 43.0
+            },
+            {
+                "fixture": "stove1T",
+                "width": 60.0
+            }
+        ]
+    },
+    "part3": {
+        "padding": 0.0,
+        "fixtures": [
+            {
+                "fixture": "cupboardA",
+                "width": 54.75
+            },
+            {
+                "fixture": "cupboardA_1",
+                "width": 54.75
+            },
+            {
+                "fixture": "cupboardA_2",
+                "width": 55.5
+            }
+        ]
+    },
+    "part4": {
+        "padding": 0.0,
+        "fixtures": [
+            {
+                "fixture": "cupboard2",
+                "width": 55.0
+            },
+            {
+                "fixture": "cupboard2_1",
+                "width": 55.0
+            },
+            {
+                "fixture": "cupboard2_2",
+                "width": 55.0
+            }
+        ]
+    }
+}
