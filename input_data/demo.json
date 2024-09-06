@@ -1,5 +1,5 @@
 {
-    "$schema": "kitchendesigner/input.schema.json",
+    "$schema": "../kitchendesigner/input.schema.json",
     "kitchen_parts": [
         {
             "name": "part1",
@@ -52,14 +52,17 @@
     "zones": [
         {
             "name": "cleaning",
-            "is_optimized": true
+            "is_optimized": true,
+            "color": "#0077ff"
         },
         {
-            "name": "storage"
+            "name": "storage",
+            "color": "#914400"
         },
         {
             "name": "cooking",
-            "is_optimized": true
+            "is_optimized": true,
+            "color": "#cc0000"
         }
     ],
     "available_fixtures": [

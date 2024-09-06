@@ -1,11 +1,14 @@
+import process_args
 import load_input
 import find_solution
-import draw_output
+import produce_output
 
 def main() -> None:
-    kitchen = load_input.load()
-    find_solution.solve(kitchen)
-    draw_output.draw(kitchen)
+    args = process_args.process()
+    kitchen = load_input.load(args.input)
+    find_solution.solve(kitchen, args)
+    produce_output.write(kitchen, args.output)
+    produce_output.draw(kitchen)
 
 
 if __name__ == '__main__':

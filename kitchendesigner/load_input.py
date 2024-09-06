@@ -6,10 +6,11 @@ import dataclasses
 from kitchen import *
 from typing import Any
 import find_solution
+from utility_functions import attr_matches
 
 
-def load() -> Kitchen:
-    loaded_data = load_data_from_files()
+def load(file_name: str) -> Kitchen:
+    loaded_data = load_data_from_files(file_name)
     zones = load_zones(loaded_data['zones'])
     fixtures = load_fictures(loaded_data['available_fixtures'], [zone.name for zone in zones])
     parts, segments = load_parts_segments(loaded_data['kitchen_parts'])
@@ -38,11 +39,11 @@ def get_bool_field(data_dict: dict[str, Any], key: str) -> Any:
         return False
 
 
-def load_data_from_files() -> Any:
+def load_data_from_files(file_name: str) -> Any:
     with open(pathlib.Path(__file__).parent / 'input.schema.json') as schema_file:
         schema = json.load(schema_file)
 
-    with open('input.json') as data_file:
+    with open(file_name) as data_file:
         # raises an exception if json is not valid
         loaded_data = json.load(data_file)
 
@@ -239,7 +240,6 @@ def load_relation_rules(rules_data: list[dict[str, Any]]) -> RelationRules:
 def preprocess_fixtures_and_rules(fixtures: list[Fixture], rules: list[PlacementRule]) -> None:
     for rule in rules:
         if rule.type == 'exclude' and rule.area == 'kitchen':
-            fixtures[:] = [fixture for fixture in fixtures if
-                           getattr(fixture, rule.attribute_name) != rule.attribute_value]
+            fixtures[:] = [fixture for fixture in fixtures if not attr_matches(rule, fixture)]
 
     rules[:] = [rule for rule in rules if rule.type != 'exclude' or rule.area != 'kitchen']

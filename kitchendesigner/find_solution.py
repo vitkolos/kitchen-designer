@@ -1,23 +1,25 @@
 from kitchen import *
 from typing import Any, Iterable
+from utility_functions import attr_matches
+from process_args import Args
 import pyomo.environ as pyo
 import math
 
-min_fixture_width = 20
-max_fixture_width = 120
+min_fixture_width = 10
+max_fixture_width = 100
 max_canvas_size = 800
-max_segment_count = 200
-vertical_continuity_tolerance = 0.5
-width_same_tolerance = 2
-width_different_tolerance = 10
-width_penult_similar_tolerance = 4
+max_segment_count = 100
+vertical_continuity_tolerance = 0.1
+width_same_tolerance = 1
+width_different_tolerance = 5
+width_penult_similar_tolerance = 2
 
 
-def solve(kitchen: Kitchen) -> None:
+def solve(kitchen: Kitchen, args: Args) -> None:
     model = KitchenModel(kitchen)
     set_constraints(kitchen, model)
     set_objective(model)
-    find_model(model)
+    find_model(model, args)
     save_result(kitchen, model)
 
 
@@ -341,10 +343,6 @@ def set_constraints(kitchen: Kitchen, model: KitchenModel) -> None:
     model.preserve_tall_fixtures_group = pyo.Constraint(model.groups, model.fixtures, rule=preserve_tall_fixtures_group)
 
     # EXCLUDE/INCLUDE RULES
-
-    def attr_matches(rule: PlacementRule, fixture: Fixture) -> Any:
-        """check if the fixture is affected by the rule"""
-        return getattr(fixture, rule.attribute_name) == rule.attribute_value
 
     def evaluate_user_rules(model: KitchenModel, rule: PlacementRule) -> Any:
         """applies some of the user-defined rules"""
@@ -915,7 +913,8 @@ def set_constraints(kitchen: Kitchen, model: KitchenModel) -> None:
         else:
             return pyo.Constraint.Skip
 
-    model.segment_check_corner = pyo.Constraint(model.corners, model.segments, pyo.RangeSet(clause_count := 2), rule=segment_check_corner)
+    model.segment_check_corner = pyo.Constraint(
+        model.corners, model.segments, pyo.RangeSet(clause_count := 2), rule=segment_check_corner)
 
     def segment_to_one_corner(model: KitchenModel, segment: Segment) -> Any:
         if len(kitchen.corners) > 0:
@@ -954,7 +953,8 @@ def set_constraints(kitchen: Kitchen, model: KitchenModel) -> None:
             model.corners_fixture[corner, fixture] <= model.present[fixture]
         ], current_clause)
 
-    model.get_corner_fixture = pyo.Constraint(model.corners, model.segments, model.fixtures, pyo.RangeSet(clause_count := 3), rule=get_corner_fixture)
+    model.get_corner_fixture = pyo.Constraint(model.corners, model.segments,
+                                              model.fixtures, pyo.RangeSet(clause_count := 3), rule=get_corner_fixture)
 
     def sync_corner_fixtures(model: KitchenModel, corner: Corner, fixture: Fixture) -> Any:
         if fixture.is_corner and fixture.second_corner_fixture is not None:
@@ -1011,12 +1011,20 @@ def set_objective(model: KitchenModel) -> None:
     model.fitness = pyo.Objective(rule=fitness, sense=pyo.maximize)
 
 
-def find_model(model: KitchenModel) -> None:
-    # opt = pyo.SolverFactory('glpk')
-    # opt = pyo.SolverFactory('cbc')
-    opt = pyo.SolverFactory('gurobi_direct')
+def find_model(model: KitchenModel, args: Args) -> None:
+    SUPPORTED_SOLVERS = ['glpk', 'cbc', 'gurobi_direct']
+
+    if args.solver in SUPPORTED_SOLVERS:
+        solver = args.solver
+    else:
+        solver = 'gurobi_direct'
+
+    opt = pyo.SolverFactory(solver)
     result_obj = opt.solve(model, tee=True)
-    model.pprint()
+
+    if args.model:
+        with open(args.model, 'w') as model_file:
+            model.pprint(model_file)
 
 
 def save_result(kitchen: Kitchen, model: KitchenModel) -> None:

@@ -2,6 +2,8 @@ from kitchen import Kitchen
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import math
+import json
+from typing import Any
 
 
 def draw(kitchen: Kitchen) -> None:
@@ -23,7 +25,6 @@ def draw(kitchen: Kitchen) -> None:
         rx = x
         ry = y
 
-        print(f"PART width {part.width}")
         rectangle = patches.Rectangle((x-eps, y-eps), part.width+2*eps, part.depth + 2*eps,
                                       angle=angle, rotation_point=(rx, ry), fill=False, ec='red')
         ax.add_patch(rectangle)
@@ -31,8 +32,6 @@ def draw(kitchen: Kitchen) -> None:
         x += part.position.padding
 
         for segment in part.segments:
-            print(f"segment {segment.number}, fixture {segment.fixture}, width {segment.width}")
-            # print(repr(segment))
             color = '#555555'
 
             if segment.fixture is not None:
@@ -45,11 +44,9 @@ def draw(kitchen: Kitchen) -> None:
                                           rotation_point=(rx, ry), fc=color+'33', ec=color+'77')
             ax.add_patch(rectangle)
             lx, ly = rotate_point_deg((x+segment.width/2, y+part.depth/2), (rx, ry), angle)
-            ax.text(lx, ly, str(segment.fixture), color=color, fontsize=font_size,
+            ax.text(lx, ly, f"{segment.number}. {segment.fixture}", color=color, fontsize=font_size,
                     verticalalignment='center', horizontalalignment='center')
             x += segment.width
-
-        print()
 
     # ax.invert_yaxis()
     # ax.set_axis_off()
@@ -64,3 +61,19 @@ def rotate_point_deg(point: tuple[float, float], around: tuple[float, float], an
     qx = (px-ax)*math.cos(angle1)-(py-ay)*math.sin(angle1)+ax
     qy = (px-ax)*math.sin(angle1)+(py-ay)*math.cos(angle1)+ay
     return qx, qy
+
+
+def write(kitchen: Kitchen, file_name: str) -> None:
+    output: dict[str, dict[str, Any]] = {}
+
+    for part in kitchen.parts:
+        output[part.name] = {}
+        output[part.name]['padding'] = part.position.padding
+        output[part.name]['fixtures'] = []
+
+        for segment in part.segments:
+            if segment.fixture is not None:
+                output[part.name]['fixtures'].append({'fixture': segment.fixture.name, 'width': segment.width})
+
+    with open(file_name, 'w') as output_file:
+        json.dump(output, output_file, indent=4)

@@ -1,5 +1,5 @@
 {
-    "$schema": "kitchendesigner/input.schema.json",
+    "$schema": "../kitchendesigner/input.schema.json",
     "kitchen_parts": [
         {
             "name": "part1",
