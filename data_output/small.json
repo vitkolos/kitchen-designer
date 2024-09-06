@@ -1,0 +1,60 @@
+{
+    "part1": {
+        "padding": 0.0,
+        "fixtures": [
+            {
+                "fixture": "cupboardT_2B",
+                "width": 55.75
+            },
+            {
+                "fixture": "sink1",
+                "width": 54.0
+            },
+            {
+                "fixture": "dishwasher2",
+                "width": 45.0
+            },
+            {
+                "fixture": "narrow2",
+                "width": 25.0
+            },
+            {
+                "fixture": "stove2",
+                "width": 60.25
+            },
+            {
+                "fixture": "oven1B",
+                "width": 60.0
+            }
+        ]
+    },
+    "part2": {
+        "padding": 0.0,
+        "fixtures": [
+            {
+                "fixture": "cupboardT_2T",
+                "width": 55.75
+            },
+            {
+                "fixture": "cupboard2",
+                "width": 53.75
+            },
+            {
+                "fixture": "cupboard2_1",
+                "width": 55.75
+            },
+            {
+                "fixture": "narrow1",
+                "width": 15.0
+            },
+            {
+                "fixture": "cupboard2_2",
+                "width": 59.75
+            },
+            {
+                "fixture": "oven1T",
+                "width": 60.0
+            }
+        ]
+    }
+}
