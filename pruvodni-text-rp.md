@@ -138,3 +138,18 @@ Nalezení optimálního řešení někdy trvá i několik minut. Bylo by žádou
 Jelikož nemám žádné hlubší vzdělání v oblasti lineárního programování, nedovedu snadno posoudit, zda jsem sestavil dostatečně efektivní model. Zdá se však, že řešení nejvíc zpomalují ty složky fitness funkce, které počítají se šířkou či vzdáleností, tím totiž vzniká mnoho *symetrií*.
 
 Je třeba zmínit, že vzhledem k povaze úlohy není nutné vždy najít optimum, stačí i dostatečně dobré suboptimální řešení – tedy to by mohl být také způsob zrychlení programu, prostě bychom nečekali na nalezení optima. (S tím souvisí fakt, že užitečnější by bylo, pokud by program vrátil několik různých návrhů, než když vrátí jeden – byť je optimální. Tedy to je také námět pro další rozvoj.)
+
+### Fitness funkce (objective)
+
+Co se týče fitness funkce, je potřeba posoudit, zda sestává ze správných složek (např. nejsem zcela přesvědčen o tom, že je vhodné, aby se maximalizoval počet přítomných skříněk v návrhu). Dále by bylo dobré jednotlivé složky vyvážit (pronásobením různými koeficienty), aby byly výsledné návrhy co nejlepší. V tuto chvíli mi však není znám žádný přímočarý přístup k tomuto problému.
+
+S překvapením jsem zjistil, že pokud změním pořadí sčítanců ve fitness funkci, program nalezne jiné optimum. Napadá mě vysvětlení, že oběma řešením přiřadí fitness funkce stejnou hodnotu, to však ještě budu muset prověřit.
+
+Počítám s tím, že uživatel bude moct fitness funkci ovlivnit prostřednictvím `preferences`, momentálně se to týká jenom pracovní plochy a úložného prostoru. Tyto uživatelské koeficienty bych rád nastavil jako *mutable* parametry, aby se případné přepočítání modelu dalo provést rychleji (bude však nezbytné místo rozhraní `gurobi_direct` použít `gurobi_persistent`).
+
+### Nedostatky současných řešení
+
+Během testování modelu na reálných kuchyních jsem objevil dva základní nedostatky:
+
+1. Umístění vysoké skříňky doprostřed řady nízkých skříněk je penalizováno pouze ztrátou pracovní plochy. Proto se v řešeních tento (obvykle nežádoucí) úkaz vyskytuje poměrně často. K nápravě problému by mohlo vést *odměnění* delších úseků skříněk stejné výšky nebo penalizace vysokých skříněk mezi dvěma nízkými. Pravděpodobně by však bylo nezbytné přidat příznak odlišující vysoké skříňky (nebo ledničky apod.) od „dvojic“ (např. sporáku a digestoře).
+2. Pravidlo `target` nebylo v konkrétním případě (jednalo se o kuchyň popsanou v `data_output/medium.json`) dostatečně účinné.
