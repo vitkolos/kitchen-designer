@@ -13,7 +13,7 @@ Program navrhne možné rozložení skříněk a spotřebičů v kuchyni, při
 
 Automatizované plánování kuchyně sestává z několika fází:
 
-1. Příprava vstupu: Součástí vstupních dat musejí být údaje o tom, kam v kuchyni je možné skříňky (a spotřebiče) rozmístit. Je nutné programu také předat databázi skříněk. Obvykle se hodí specifikovat, které typy spotřebičů je nutné v návrhu zahrnout.
+1. Příprava vstupu: Součástí vstupních dat musejí být údaje o tom, kam v kuchyni je možné skříňky (a spotřebiče) rozmístit. Je nutné programu také předat databázi skříněk. Obvykle je vhodné specifikovat, které typy spotřebičů musejí být v návrhu zahrnuty.
 2. Výpočet, jehož délka se obvykle pohybuje v řádu minut.
 3. Získání výstupu: Výsledný návrh je kromě textového formátu dostupný rovněž prostřednictvím grafického rozhraní.
 4. Případná úprava vstupních dat a opakování výpočtu.
@@ -22,9 +22,9 @@ Automatizované plánování kuchyně sestává z několika fází:
 
 Před prvním spuštěním je nutné nainstalovat nezbytné balíčky pomocí `pip install -r requirements.txt`.
 
-Program se spouští příkazem `python kitchendesigner`. Za ním následují dva nutné parametry: 1. umístění vstupního souboru, 2. umístění výstupního souboru. Ke vstupu i výstupu se používá formát JSON (viz níže).
+Program se spouští příkazem `python kitchendesigner`. Za ním následují dva povinné argumenty: 1. umístění vstupního souboru, 2. umístění výstupního souboru. Ke vstupu i výstupu se používá formát JSON (viz níže).
 
-Dále lze použít tyto volitelné parametry:
+Dále lze použít tyto volitelné argumenty:
 
 - `-m`, `--model` – takto lze specifikovat umístění souboru, do nějž se má vypsat vyřešený model (tedy interní sada proměnných, lineárních omezujících podmínek apod.)
 - `-s`, `--solver` – místo Gurobi (`gurobi_direct`) je možné použít solvery `cbc` a `glpk`
@@ -40,15 +40,15 @@ Soubor formátu JSON se vstupními daty musí odpovídat schématu `kitchendesig
 	- `position` – údaje pro přesnou lokalizaci části linky
 		- `x`, `y` – souřadnice levého dolního rohu části (pozor: je nutné, aby se celý plán kuchyně pohyboval v určitých mezích, dolní mezí je nula, tedy žádná část kuchyně nesmí zasahovat mimo první kvadrant, horní mez se definuje v konstantách, viz níže)
 		- `angle` – natočení části
-		- `group_number` – číslo skupiny (jsou-li dvě části linky nad sebou, měly by být ve stejné skupině)
+		- `group_number` – číslo skupiny (jsou-li dvě části linky nad sebou, měly by být ve stejné skupině – kvůli vysokým skříňkám)
 		- `group_offset` – odsazení od levého okraje skupiny (obvykle může být 0)
 	- `width` – šířka části
-	- `depth` – hloubka skříněk (není předmětem optimalizace)
+	- `depth` – hloubka skříněk (není předmětem optimalizace, ale zohledňuje se při výpočtu souřadnic a při plánování rohových skříněk)
 	- `edge_left`, `edge_right` – stojí levý/pravý kraj části volně v prostoru? (pokud je kuchyňská linka ode zdi ke zdi, budou obě hodnoty `false`)
 - `walls` – (volitelný) seznam objektů popisujících umístění zdí. Při použití `wall_distance` (viz níže) je důležité, aby byl tento seznam součástí vstupu. Každý prvek seznamu má atributy:
 	- `group` – číslo skupiny, kterou zdi ohraničují
 	- `left` – „offset“ levé zdi (v základním případě bude 0)
-	- `right` – „offset“ pravé zdi
+	- `right` – „offset“ pravé zdi (v základním případě bude odpovídat šířce kuchyňské linky)
 - `corners` – (volitelný) seznam rohů, musí být zadán, pokud je kuchyň tvaru L nebo U. Každý roh má tyto atributy:
 	- `part1_name` – název první *části kuchyně*
 	- `part1_left` – přiléhá první část do rohu levým koncem (tedy tím s nižším offsetem)?
@@ -94,16 +94,16 @@ Soubor formátu JSON se vstupními daty musí odpovídat schématu `kitchendesig
 	- `position_bottom` – má být skříňka umístěna v dolní řadě? (je-li skříňka vysoká, musí být `position_top` i `position_bottom` rovny `true`, pak skříňka zasahuje do obou řad v dané *skupině*)
 	- `width_min` – minimální šířka skříňky
 	- `width_max` – maximální šířka skříňky
-	- `width_min2` a `width_max2` lze použít u rohových skříněk, pokud má skříňka v jedné části rohu jiné rozměry než v druhé
-	- `storage` – množství úložného prostoru v konkrétní skříňce (typicky na stupnici od nuly do pěti)
+	- `width_min2` a `width_max2` lze použít u rohových skříněk, pokud má skříňka v jedné části rohu jiné rozměry než v druhé (jako šířka se počítá vzdálenost okraje skříňky od rohu)
+	- `storage` – množství úložného prostoru v konkrétní skříňce (typicky na stupnici od nuly do pěti, desetinná čísla jsou povolena)
 	- `has_worktop` – je na skříňku možné umístit pracovní desku?
 	- `allow_edge` – je možné skříňku umístit na kraj (stojící volně v prostoru)?
 	- `is_corner` – jedná se o rohovou skříňku?
-	- `allow_multiple` – je možné mít v jednom návrhu několik instancí (až 3) této skříňky?
+	- `allow_multiple` – je možné mít v jednom návrhu několik instancí (až 3) této skříňky?
 
 ### Formát výstupu
 
-Soubor formátu JSON se výstupními daty odpovídá schématu `kitchendesigner/output.schema.json`. Hlavní výstupní objekt má atributy odpovídá jednotlivými částem kuchyně (jsou označeny jejich názvy). Každá část kuchyně obsahuje atribut `padding`, to je šířka volného prostoru od levého kraje dané části. Obsahuje rovněž atribut `fixtures`, to je seznam skříněk (a spotřebičů), které jsou v návrhu umístěny v dané části kuchyně. Pořadí umístění odpovídá pořadí v seznamu. Každý prvek seznamu má atribut `fixture`, tam je název dané skříňky, a atribut `width`, což je šířka dané skříňky v návrhu.
+Soubor formátu JSON se výstupními daty odpovídá schématu `kitchendesigner/output.schema.json`. Hlavní výstupní objekt má atributy odpovídá jednotlivými částem kuchyně (jsou označeny jejich názvy). Každá část kuchyně obsahuje atribut `padding`, to je šířka volného prostoru od levého okraje dané části. Obsahuje rovněž atribut `fixtures`, to je seznam skříněk (a spotřebičů), které jsou v návrhu umístěny v dané části kuchyně. Pořadí umístění odpovídá pořadí v seznamu. Každý prvek seznamu má atribut `fixture`, tam je název dané skříňky, a atribut `width`, což je šířka dané skříňky v návrhu.
 
 Vizuální výstup v grafickém rozhraní odpovídá pohledu shora, přičemž horní části kuchyňské linky jsou pro přehlednost posunuty – jejich reálnému umístění odpovídá šrafovaná oblast.
 
@@ -117,33 +117,33 @@ Nyní lze vstupní data předat tomto programu a vyčkat, dokud nenalezne řeš
 
 ### Pracovní trojúhelník a rozmístění zón
 
-Při návrhu kuchyně a hledání vhodného rozmístění skříněk se bere v úvahu tzv. pracovní trojúhelník, tedy vhodné rozmístění a vzájemné vzdálenosti zón (vaření, mytí, skladování). Rozhodl jsem se to přímo nezohledňovat v modelu, místo toho převádím zodpovědnost na designéra. Ten tedy může navrhnout rozmístění zón, ve vstupních datech se to označuje jako `optimal_center` (tedy optimální střed dané zóny).
+Při návrhu kuchyně a hledání vhodného rozmístění skříněk se bere v úvahu tzv. pracovní trojúhelník, tedy vhodné rozmístění a vzájemné vzdálenosti zón (vaření, mytí, skladování). Rozhodl jsem se to přímo nezohledňovat v modelu, místo toho převádím odpovědnost na designéra. Ten tedy může navrhnout rozmístění zón, ve vstupních datech se to označuje jako `optimal_center` (tedy optimální střed dané zóny).
 
-Rozhodl jsem se, že umožňím shlukování skříněk (spotřebičů) stejné zóny i bez uvedení optimálního středu. Toho jsem docílil tak, že pro danou zónu počítám její reálný střed. Ve fitness funkci se pak zvýhodňuje menší vzdálenost skříněk dané zóny od jejího středu. Nezávisle na tom se zvýhodňuje malá vzdálenost reálného středu od optimálního středu zóny. To je však poměrně *výpočetně náročné*, tedy možným krokem ke zrychlení výpočtu by bylo zrušení tohoto mezikroku s výpočtem reálného středu zóny.
+Rozhodl jsem se, že umožňím shlukování skříněk (spotřebičů) stejné zóny i bez uvedení optimálního středu. Toho jsem docílil tak, že pro danou zónu počítám její reálný střed. Ve fitness funkci se pak zvýhodňuje menší vzdálenost skříněk dané zóny od jejího středu. Nezávisle na tom se zvýhodňuje malá vzdálenost reálného středu od optimálního středu zóny. To je však poměrně *výpočetně náročné*, ke zrychlení výpočtu by tedy mohlo přispět zrušení tohoto mezikroku s výpočtem reálného středu zóny.
 
 ### Konstanty
 
-Při formulaci modelu se používá několik konstant, které se týkají rozsahů proměnných a „tolerancí“ (při posuzování šířek, rozměrů apod.). Dále se v programu vyskytují konstanty týkající se počtu *klonů* u vícenásobných skříněk a zaokrouhlení při výpočtu goniometrických funkcí. Není zcela jasné, které konstanty by měl uživatel poskytnout na vstupu (v rámci objektu `constants`, nebo dokonce přímo v databázi skříněk) a které by měly být definovány interně v programu.
+Při formulaci modelu se používá několik konstant, které se týkají rozsahů proměnných a „tolerancí“ (při posuzování šířek, rozměrů apod.). Dále se v programu vyskytují konstanty týkající se počtu *klonů* u vícenásobných skříněk a zaokrouhlení při výpočtu goniometrických funkcí. Není zcela jasné, které konstanty by měly být od uživatele vyžadovány na vstupu (v rámci objektu `constants`, nebo dokonce přímo v databázi skříněk) a které by měly být definovány interně v programu.
 
 ### Ošetření vstupu
 
 Jelikož se jedná pouze o základní verzi programu, nekladl jsem zvláštní důraz na validaci vstupu (přestože se používá validace oproti JSON schématu).
 
-U některých případů vstupu, který nelze přímo předat modelu, ale v principu není zcela chybný, by bylo možné uvažovat o jeho korekci pro účely modelu a následném převedení zpět pro účely výstupu (např. pokud by se části kuchyně nenacházely v požadovaném rozsahu souřadnic, bylo by je možné dvakrát přeškálovat – po načtení vstupu a před výpisem výstupu).
+U některých případů vstupu, který nelze přímo předat modelu, ale v principu není zcela chybný, by bylo možné uvažovat o jeho korekci pro účely modelu a následném převedení zpět pro účely výstupu. Například pokud by se části kuchyně nenacházely v požadovaném rozsahu souřadnic, bylo by je možné dvakrát přeškálovat – po načtení vstupu a před výpisem výstupu.
 
 ### Pomalé hledání řešení
 
 Nalezení optimálního řešení někdy trvá i několik minut. Bylo by žádoucí tento čas snížit, jelikož proces automatizovaného návrhu obvykle sestává z několika iterací – na základě nalezeného řešení je potřeba upravit vstupní parametry a hledat nové řešení.
 
-Jelikož nemám žádné hlubší vzdělání v oblasti lineárního programování, nedovedu snadno posoudit, zda jsem sestavil dostatečně efektivní model. Zdá se však, že řešení nejvíc zpomalují ty složky fitness funkce, které počítají se šířkou či vzdáleností, tím totiž vzniká mnoho *symetrií*.
+Jelikož nemám žádné hlubší vzdělání v oblasti lineárního programování, nedovedu snadno posoudit, zda jsem sestavil dostatečně efektivní model. Zdá se, že řešení nejvíc zpomalují ty složky fitness funkce, které počítají se šířkou či vzdáleností, tím totiž vzniká mnoho *symetrií*.
 
 Je třeba zmínit, že vzhledem k povaze úlohy není nutné vždy najít optimum, stačí i dostatečně dobré suboptimální řešení – tedy to by mohl být také způsob zrychlení programu, prostě bychom nečekali na nalezení optima. (S tím souvisí fakt, že užitečnější by bylo, pokud by program vrátil několik různých návrhů, než když vrátí jeden – byť je optimální. Tedy to je také námět pro další rozvoj.)
 
 ### Fitness funkce (objective)
 
-Co se týče fitness funkce, je potřeba posoudit, zda sestává ze správných složek (např. nejsem zcela přesvědčen o tom, že je vhodné, aby se maximalizoval počet přítomných skříněk v návrhu). Dále by bylo dobré jednotlivé složky vyvážit (pronásobením různými koeficienty), aby byly výsledné návrhy co nejlepší. V tuto chvíli mi však není znám žádný přímočarý přístup k tomuto problému.
+Co se týče fitness funkce, je potřeba posoudit, zda sestává ze správných složek (např. nejsem zcela přesvědčen o tom, že je vhodné, aby se maximalizoval počet přítomných skříněk v návrhu). Dále by bylo dobré jednotlivé složky vyvážit (pronásobením různými koeficienty), aby byly výsledné návrhy co nejlepší. V tuto chvíli mi však není znám žádný elegantní a přímočarý postup, jak tento problém řešit.
 
-S překvapením jsem zjistil, že pokud změním pořadí sčítanců ve fitness funkci, program nalezne jiné optimum. Napadá mě vysvětlení, že oběma řešením přiřadí fitness funkce stejnou hodnotu, to však ještě budu muset prověřit.
+S překvapením jsem zjistil, že pokud změním pořadí sčítanců ve fitness funkci, program nalezne jiné optimum. Napadá mě vysvětlení, že oběma řešením přiřadí fitness funkce stejnou hodnotu, to by bylo ještě potřeba ověřit.
 
 Počítám s tím, že uživatel bude moct fitness funkci ovlivnit prostřednictvím `preferences`, momentálně se to týká jenom pracovní plochy a úložného prostoru. Tyto uživatelské koeficienty bych rád nastavil jako *mutable* parametry, aby se případné přepočítání modelu dalo provést rychleji (bude však nezbytné místo rozhraní `gurobi_direct` použít `gurobi_persistent`).
 
