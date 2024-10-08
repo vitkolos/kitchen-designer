@@ -13,6 +13,7 @@ def solve(kitchen: Kitchen, args: Args) -> None:
     model = KitchenModel(kitchen)
     set_constraints(kitchen, model)
     set_objective(model)
+    deactivate_components(model)
     model_structure.print_structure(model, args)
     find_model(model, args)
     save_result(kitchen, model)
@@ -1008,6 +1009,49 @@ def set_objective(model: KitchenModel) -> None:
                 + intersections + close_to_wall)
 
     model.fitness = pyo.Objective(rule=fitness, sense=pyo.maximize)
+
+
+def deactivate_components(model: KitchenModel) -> None:
+    # MULTIPLE SAME FIXTURES RULE
+    # model.sort_multiple_same_fixtures.deactivate()
+    # WIDTH DIFFERENCE RULES
+    # model.get_width_difference.deactivate()
+    # model.get_width_difference_penult.deactivate()
+    # ZONE RULES
+    # model.get_zone_coordinates_sync.deactivate()
+    # model.get_zone_coordinates_sums.deactivate()
+    # model.get_fixture_zone_distance.deactivate()
+    # model.get_zone_center_distance.deactivate()
+    # VERTICAL CONTINUITY RULES
+    # model.vertical_continuity_segments_beginning.deactivate()
+    # model.vertical_continuity_part_ending.deactivate()
+    # WIDTH PATTERN RULES
+    # model.is_previous_width_not_same.deactivate()
+    # model.is_previous_width_different.deactivate()
+    # model.different_implies_not_same.deactivate()
+    # model.is_penultimate_width_similar.deactivate()
+    # model.is_aba_pattern.deactivate()
+    # RELATION RULES
+    # model.get_fixture_target_distance.deactivate()
+    # model.ensure_min_distance.deactivate()
+    # model.wall_distance.deactivate()
+    # model.is_wide_enough.deactivate()
+    # model.at_least_one_wide.deactivate()
+    # WORKTOP RULES
+    # model.worktop_width_unused_segments.deactivate()
+    # model.worktop_width_fixtures.deactivate()
+    # model.worktop_max_segments.deactivate()
+    # model.worktop_best_segment.deactivate()
+    # model.worktop_required.deactivate()
+    # CORNER RULES
+    # model.corner_not_empty.deactivate()
+    # model.segment_check_corner.deactivate()
+    # model.segment_to_one_corner.deactivate()
+    # model.fixture_in_corner.deactivate()
+    # model.corner_order.deactivate()
+    # model.get_corner_fixture.deactivate()
+    # model.sync_corner_fixtures.deactivate()
+    return
 
 
 def find_model(model: KitchenModel, args: Args) -> None:
