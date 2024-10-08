@@ -1,0 +1,48 @@
+- sets
+	- $P$ … kitchen parts
+	- $S$ … segments
+	- $F$ … fixtures
+- constants
+	- $M_w$ … maximum fixture width (general)
+	- $m_w$ … minimum fixture width (general)
+	- $M_c$ … maximum canvas size
+	- $minw_f$ … minimum width of fixture $f$
+	- $maxw_f$ … maximum width of fixture $f$
+	- $width_p$ … width of kitchen part $p$
+- variables
+	- $present_f\in\set{0,1}$ … fixture $f$ is present in the design
+	- $used_s\in\set{0,1}$ … segment $s$ is used in the design
+	- $pairs_{sf}\in\set{0,1}$ … segment $s$ contains fixture $f$ in the design
+	- $widths_s\in[0,M_w]$ … width of segment $s$
+	- $padding_p\in[0,M_c]$ … left padding of kitchen part $p$
+- constraints
+	- basic
+		- $\forall f\in F:present_f=\sum_{s\in S} pairs_{sf}$
+		- $\forall s\in S:used_s=\sum_{f} pairs_{sf}$
+		- $\forall s\in S\setminus S_{first}: used_s\leq used_{s_p}$
+			- $S_{first}$ … set of segments that are first in their kitchen part
+			- $s_p$ … the segment before segment $s$
+		- $\forall s\in S:widths_s\leq used_s\cdot M_{w}$
+		- $\forall s\in S:widths_s\geq used_s\cdot m_{w}$
+		- $(\forall s\in S_{top})(\forall f\in F_{bottom}):pairs_{sf}=0$
+		- $(\forall s\in S_{bottom})(\forall f\in F_{top}):pairs_{sf}=0$
+	- width
+		- $(\forall s\in S)(\forall f\in F):widths_s\geq minw_f\cdot pairs_{sf}$
+		- $(\forall s\in S)(\forall f\in F):widths_s\leq maxw_f + M_w\cdot (1- pairs_{sf})$
+		- $\forall p\in P:padding_p+\sum_{s\in S_p} widths_s\leq width_p$
+	- edge
+	- position
+	- tall fixtures
+	- placement
+	- multiple same fixtures
+	- width difference
+	- zone
+	- vertical continuity
+	- width pattern
+	- relations
+	- worktop
+	- corner
+- objective function
+	- $present = \sum_{f\in F}present_f\cdot 10$
+	- $width = (\sum_{s\in S}widths_s-\sum_{p\in P}width_p)\cdot 5$
+	- objective: $\max (present+width+\dots)$
