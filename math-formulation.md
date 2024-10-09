@@ -1,34 +1,51 @@
 - sets
-	- $P$ … kitchen parts
-	- $S$ … segments
-	- $F$ … fixtures
+	- $F\subseteq\mathbb N$ … fixtures
+	- $P\subseteq\mathbb N$ … kitchen parts
+	- $G\subseteq\mathbb N$ … groups (of kitchen parts)
+		- $\forall p\in P:g_p\in G$ … group of the kitchen part
+		- every kitchen part belongs in one group
+		- one group can contain multiple kitchen parts
+	- $\forall p\in P:S_p\subseteq\mathbb N$ … segments
+		- $\bigcap_{p\in P}S_p=\emptyset$
+		- $S:=\bigcup_{p\in P} S_p$
+		- $(\forall q\in P)(\forall s\in S_q):p_s:=q$
+		- $g_{p_s}$ … group of the segment
 - constants
-	- $M_w$ … maximum fixture width (general)
-	- $m_w$ … minimum fixture width (general)
-	- $M_c$ … maximum canvas size
+	- $Mw$ … maximum fixture width (general)
+	- $mw$ … minimum fixture width (general)
+	- $Mc$ … maximum canvas size
+	- $vct$ … vertical continuity tolerance
 	- $minw_f$ … minimum width of fixture $f$
 	- $maxw_f$ … maximum width of fixture $f$
 	- $width_p$ … width of kitchen part $p$
+	- $offset_g$ … offset of group $g$
 - variables
 	- $present_f\in\set{0,1}$ … fixture $f$ is present in the design
 	- $used_s\in\set{0,1}$ … segment $s$ is used in the design
 	- $pairs_{sf}\in\set{0,1}$ … segment $s$ contains fixture $f$ in the design
-	- $widths_s\in[0,M_w]$ … width of segment $s$
-	- $padding_p\in[0,M_c]$ … left padding of kitchen part $p$
+	- $widths_s\in[0,Mw]$ … width of segment $s$
+	- $padding_p\in[0,Mc]$ … left padding of kitchen part $p$
+	- vertical continuity
+		- $begins_{s_1s_2}\in\set{0,1}$ … segment $s_2$ begins before segment $s_1$ beginning
+		- $ends_{s_1s_2}\in\set{0,1}$ … segment $s_2$ ends after segment $s_1$ beginning
+		- $intersects_{s_1s_2}\in\set{0,1}$ … segment $s_1$ “intersects” segment $s_2$
 - constraints
 	- basic
 		- $\forall f\in F:present_f=\sum_{s\in S} pairs_{sf}$
 		- $\forall s\in S:used_s=\sum_{f} pairs_{sf}$
-		- $\forall s\in S\setminus S_{first}: used_s\leq used_{s_p}$
+		- $\forall s\in S\setminus S_{first}: used_s\leq used_{s-1}$
 			- $S_{first}$ … set of segments that are first in their kitchen part
-			- $s_p$ … the segment before segment $s$
-		- $\forall s\in S:widths_s\leq used_s\cdot M_{w}$
-		- $\forall s\in S:widths_s\geq used_s\cdot m_{w}$
+		- $\forall s\in S:widths_s\leq used_s\cdot Mw$
+		- $\forall s\in S:widths_s\geq used_s\cdot mw$
 		- $(\forall s\in S_{top})(\forall f\in F_{bottom}):pairs_{sf}=0$
+			- $S_{top}$ … “top” segments (designated for hanging fixtures)
+			- $F_{bottom}$ … “bottom” fixtures (standing on the ground)
 		- $(\forall s\in S_{bottom})(\forall f\in F_{top}):pairs_{sf}=0$
+			- $S_{bottom}$ … “bottom” segments (designated for fixtures standing on the ground)
+			- $F_{top}$ … “top” (hanging) fixtures
 	- width
 		- $(\forall s\in S)(\forall f\in F):widths_s\geq minw_f\cdot pairs_{sf}$
-		- $(\forall s\in S)(\forall f\in F):widths_s\leq maxw_f + M_w\cdot (1- pairs_{sf})$
+		- $(\forall s\in S)(\forall f\in F):widths_s\leq maxw_f + Mw\cdot (1- pairs_{sf})$
 		- $\forall p\in P:padding_p+\sum_{s\in S_p} widths_s\leq width_p$
 	- edge
 	- position
@@ -38,6 +55,19 @@
 	- width difference
 	- zone
 	- vertical continuity
+		- $S'$ … segments that are in the same group as $s_1$ but in a different kitchen part
+		- $(\forall s_1\in S)(\forall s_2\in S'):$
+			- $\forall i\in\set{1,2}:p_i:= p_{s_i},\;g_i := g_{p_i}$
+			- $offset'_1:=offset_{g_1}+padding_{p_1}+\sum_{s\in S_{p_1};s\lt s_1}widths_s$
+			- $offset'_2:=offset_{g_2}+padding_{p_2}+\sum_{s\in S_{p_2};s\lt s_2}widths_s$
+			- $0\leq -offset'_1+(offset'_2+vct)+Mc\cdot begins_{s_1s_2}\leq Mc$
+			- $0\leq offset'_1-(offset'_2+widths_{s_2}-vct)+Mc\cdot ends_{s_1s_2}\leq Mc$
+			- $0\leq begins_{s_1s_2}+ends_{s_1s_2}+used_{s_1}-3\cdot intersects_{s_1s_2}\leq 2$
+		- speedup attempt
+			- $(\forall s_1\in S\setminus S_{first})(\forall s_2\in S'):begins_{s_1-1,s_2}\leq begins_{s_1,s_2}$
+			- $(\forall s_1\in S)(\forall s_2\in S'\setminus S_{first}):ends_{s_1,s_2-1}\leq ends_{s_1,s_2}$
+			- $(\forall s_1\in S\setminus S_{first})(\forall s_2\in S'):ends_{s_1-1,s_2}\geq ends_{s_1,s_2}$
+			- the fourth missing constraint would slow it down
 	- width pattern
 	- relations
 	- worktop
