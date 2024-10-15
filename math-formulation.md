@@ -75,4 +75,5 @@
 - objective function
 	- $present = \sum_{f\in F}present_f\cdot 10$
 	- $width = (\sum_{s\in S}widths_s-\sum_{p\in P}width_p)\cdot 5$
-	- objective: $\max (present+width+\dots)$
+	- $intersections = \sum_{s_1\in S}\sum_{s_2\in S}intersects_{s_1s_2} \cdot (-2)$
+	- objective: $\max (present+width+intersections+\dots)$
